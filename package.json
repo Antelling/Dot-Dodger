@@ -1,0 +1,20 @@
+{
+  "name": "tilttopersist",
+  "version": "1.0.0",
+  "description": "we are going to make a minimal implementation of a tilt-based arcade game. its pretty simple...",
+  "main": "index.js",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@types/node": "^25.3.0",
+    "typescript": "^5.9.3",
+    "vite": "^7.3.1"
+  }
+}
