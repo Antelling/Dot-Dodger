@@ -142,20 +142,83 @@ export class WeaponOrb {
   }
 
   private drawNuclearBombIcon(ctx: CanvasRenderingContext2D, x: number, y: number, scale: number): void {
+    const skullScale = scale * 0.7;
+
+    // Skull head (circle)
     ctx.beginPath();
-    ctx.arc(x, y, scale * 0.2, 0, Math.PI * 2);
+    ctx.arc(x, y - skullScale * 0.1, skullScale * 0.5, 0, Math.PI * 2);
     ctx.fill();
 
-    for (let i = 0; i < 3; i++) {
-      const angle = (i / 3) * Math.PI * 2 - Math.PI / 2;
+    // Eye sockets (two black circles)
+    ctx.fillStyle = '#000000';
+    ctx.beginPath();
+    ctx.arc(x - skullScale * 0.2, y - skullScale * 0.15, skullScale * 0.15, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(x + skullScale * 0.2, y - skullScale * 0.15, skullScale * 0.15, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Nose (inverted triangle)
+    ctx.beginPath();
+    ctx.moveTo(x, y + skullScale * 0.05);
+    ctx.lineTo(x - skullScale * 0.08, y + skullScale * 0.2);
+    ctx.lineTo(x + skullScale * 0.08, y + skullScale * 0.2);
+    ctx.closePath();
+    ctx.fill();
+
+    // Jaw / teeth area
+    ctx.fillStyle = '#FFFFFF';
+    ctx.beginPath();
+    ctx.rect(x - skullScale * 0.25, y + skullScale * 0.25, skullScale * 0.5, skullScale * 0.2);
+    ctx.fill();
+
+    // Teeth lines
+    ctx.strokeStyle = '#000000';
+    ctx.lineWidth = 1.5;
+    for (let i = 1; i <= 2; i++) {
+      const teethX = x - skullScale * 0.08 * i;
       ctx.beginPath();
-      ctx.arc(
-        x + Math.cos(angle) * scale * 0.5,
-        y + Math.sin(angle) * scale * 0.5,
-        scale * 0.25,
-        angle + Math.PI / 3,
-        angle + Math.PI * 2 / 3
-      );
+      ctx.moveTo(teethX, y + skullScale * 0.25);
+      ctx.lineTo(teethX, y + skullScale * 0.45);
+      ctx.stroke();
+
+      const teethX2 = x + skullScale * 0.08 * i;
+      ctx.beginPath();
+      ctx.moveTo(teethX2, y + skullScale * 0.25);
+      ctx.lineTo(teethX2, y + skullScale * 0.45);
+      ctx.stroke();
+    }
+
+    // Crossbones (X shape behind skull)
+    ctx.strokeStyle = '#FFFFFF';
+    ctx.lineWidth = 3;
+    ctx.lineCap = 'round';
+
+    // Bone 1 (backslash)
+    ctx.beginPath();
+    ctx.moveTo(x - skullScale * 0.7, y - skullScale * 0.5);
+    ctx.lineTo(x + skullScale * 0.7, y + skullScale * 0.5);
+    ctx.stroke();
+
+    // Bone 2 (forward slash)
+    ctx.beginPath();
+    ctx.moveTo(x + skullScale * 0.7, y - skullScale * 0.5);
+    ctx.lineTo(x - skullScale * 0.7, y + skullScale * 0.5);
+    ctx.stroke();
+
+    // Bone ends (small circles at ends of bones)
+    ctx.fillStyle = '#FFFFFF';
+    const boneEndRadius = skullScale * 0.1;
+    const boneEnds = [
+      { x: x - skullScale * 0.7, y: y - skullScale * 0.5 },
+      { x: x + skullScale * 0.7, y: y + skullScale * 0.5 },
+      { x: x + skullScale * 0.7, y: y - skullScale * 0.5 },
+      { x: x - skullScale * 0.7, y: y + skullScale * 0.5 }
+    ];
+
+    for (const end of boneEnds) {
+      ctx.beginPath();
+      ctx.arc(end.x, end.y, boneEndRadius, 0, Math.PI * 2);
       ctx.fill();
     }
   }

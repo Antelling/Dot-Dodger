@@ -4,7 +4,7 @@ export const PLAYER_MAX_SPEED = 800;
 export const PLAYER_ARROW_LENGTH = 15;
 
 export const DOT_RADIUS = 8;
-export const DOT_SPAWN_ANIMATION_DURATION = 500;
+export const DOT_SPAWN_ANIMATION_DURATION = 1000;
 export const DOT_SPAWN_SCALE_MAX = 1.5;
 
 export const WEAPON_ORB_RADIUS = 20;
@@ -37,8 +37,8 @@ export const WEAPON_COLORS: Record<string, string> = {
   HOMING_MISSILE: '#FFFF00',
   NUCLEAR_BOMB: '#FF0000',
   ELECTRIC_BOMB: '#00FFFF',
-  DOT_REPELLENT: '#00FF00',
-  CHAINSAW: '#5A7A8A',
+  DOT_REPELLENT: '#808080',
+  CHAINSAW: '#0066FF',
   FLAME_BURST: '#FF9900'
 };
 

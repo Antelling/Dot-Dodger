@@ -15,6 +15,7 @@ export class Blaster extends Weapon {
   private beamAngle: number = 0;
   private playerPosition: Vector2 = { x: 0, y: 0 };
   private playerAngle: number = 0;
+  private beamOriginPosition: Vector2 = { x: 0, y: 0 };
 
   activate(player: Player, dots: Dot[]): void {
     this.start();
@@ -40,6 +41,7 @@ export class Blaster extends Weapon {
       if (elapsed >= this.aimTime) {
         this.state = 'FIRING';
         this.beamAngle = this.playerAngle;
+        this.beamOriginPosition = { ...this.playerPosition };
       }
     } else if (this.state === 'FIRING') {
       this.prevBeamPosition = this.beamPosition;
@@ -63,14 +65,14 @@ export class Blaster extends Weapon {
         const dotPos = dot.getPosition();
         const dotRadius = dot.getRadius();
 
-        const dx = dotPos.x - this.playerPosition.x;
-        const dy = dotPos.y - this.playerPosition.y;
+        const dx = dotPos.x - this.beamOriginPosition.x;
+        const dy = dotPos.y - this.beamOriginPosition.y;
 
         const localX = dx * cos + dy * sin;
         const localY = dx * sin - dy * cos;
 
-        const halfWidth = 35 + dotRadius;
-        const halfLength = 75 + dotRadius;
+        const halfWidth = 50 + dotRadius;
+        const halfLength = 100 + dotRadius;
 
         const inWidth = Math.abs(localY) <= halfWidth;
 
@@ -107,8 +109,8 @@ export class Blaster extends Weapon {
 
       ctx.restore();
     } else if (this.state === 'FIRING') {
-      const x = this.playerPosition.x + this.beamPosition * Math.cos(this.beamAngle);
-      const y = this.playerPosition.y + this.beamPosition * Math.sin(this.beamAngle);
+      const x = this.beamOriginPosition.x + this.beamPosition * Math.cos(this.beamAngle);
+      const y = this.beamOriginPosition.y + this.beamPosition * Math.sin(this.beamAngle);
 
       ctx.save();
       ctx.translate(x, y);

@@ -36,13 +36,14 @@ export class ElectricBomb extends Weapon {
   private readonly initialRadiusFactor: number = 0.15;
   private readonly chainRadiusFactor: number = 0.10;
   private readonly maxChainDepth: number = 50;
-  private killedPlayer: boolean = false;
   private orbSpeed: number = 300;
   private orbRadius: number = 12;
   private rollingDuration: number = 2000;
   private chainDelayMs: number = 80;
   private lastChainTime: number = 0;
   private bounds: Bounds | null = null;
+  private lastCollisionTime: number = 0;
+  private readonly collisionCooldown: number = 100;
 
   activate(player: Player, dots: Dot[]): void {
     this.dots = dots;
@@ -76,6 +77,66 @@ export class ElectricBomb extends Weapon {
       case 'COMPLETE':
         break;
     }
+  }
+
+  getPosition(): Vector2 {
+    return this.orbPosition;
+  }
+
+  getRadius(): number {
+    return this.orbRadius;
+  }
+
+  handlePlayerCollision(_player: Player, playerVelocity: Vector2): boolean {
+    const now = Date.now();
+    if (now - this.lastCollisionTime < this.collisionCooldown) {
+      return false;
+    }
+    this.lastCollisionTime = now;
+
+    const dx = this.orbPosition.x - _player.position.x;
+    const dy = this.orbPosition.y - _player.position.y;
+    const distance = Math.sqrt(dx * dx + dy * dy);
+
+    const minSpeed = 50;
+    const playerSpeed = Math.sqrt(playerVelocity.x ** 2 + playerVelocity.y ** 2);
+
+    if (playerSpeed < minSpeed) {
+      return false;
+    }
+
+    if (distance === 0) {
+      this.orbVelocity.x = playerVelocity.x;
+      this.orbVelocity.y = playerVelocity.y;
+      return true;
+    }
+
+    const nx = dx / distance;
+    const ny = dy / distance;
+    const tx = -ny;
+    const ty = nx;
+
+    const vDotN = playerVelocity.x * nx + playerVelocity.y * ny;
+    const vDotT = playerVelocity.x * tx + playerVelocity.y * ty;
+
+    const directness = vDotN / playerSpeed;
+
+    if (directness < 0.1) {
+      return false;
+    }
+
+    if (directness > 0.7) {
+      this.orbVelocity.x = playerVelocity.x;
+      this.orbVelocity.y = playerVelocity.y;
+    } else {
+      const forwardFactor = directness;
+      const sidewaysFactor = 1 - directness;
+
+      this.orbVelocity.x = (nx * vDotN * forwardFactor + tx * vDotT * sidewaysFactor);
+      this.orbVelocity.y = (ny * vDotN * forwardFactor + ty * vDotT * sidewaysFactor);
+    }
+
+    return true;
   }
 
   private updateRolling(dt: number, bounds: Bounds): void {
@@ -164,52 +225,46 @@ export class ElectricBomb extends Weapon {
       this.state = 'COMPLETE';
       return;
     }
-    
+
     const now = Date.now();
-    
+
     if (now - this.lastChainTime < this.chainDelayMs) {
       return;
     }
-    
+
     this.lastChainTime = now;
-    
-    const pendingNodes = this.chainNodes.filter(n => 
-      n.chainDepth > 0 && 
+
+    const pendingNodes = this.chainNodes.filter(n =>
+      n.chainDepth > 0 &&
       now - n.activatedAt < 100 &&
       n.chainDepth < this.maxChainDepth
     );
-    
+
     if (pendingNodes.length === 0) {
       this.checkPlayerHit(player);
-      
-      const activeNodes = this.chainNodes.filter(n => 
+
+      const activeNodes = this.chainNodes.filter(n =>
         now - n.activatedAt < 600
       );
-      
-      if (activeNodes.length === 0) {
+
+      // Complete if no active nodes OR if only the initial node (depth 0) exists
+      // (meaning the chain never started because no dots were in range)
+      const hasChainNodes = this.chainNodes.some(n => n.chainDepth > 0);
+
+      if (activeNodes.length === 0 || !hasChainNodes) {
         this.state = 'COMPLETE';
       }
       return;
     }
-    
+
     for (const node of pendingNodes) {
       this.findAndElectrifyDots(node);
     }
-    
+
     this.checkPlayerHit(player);
   }
 
-  private checkPlayerHit(player: Player): void {
-    for (const node of this.chainNodes) {
-      const dx = player.position.x - node.x;
-      const dy = player.position.y - node.y;
-      const distance = Math.sqrt(dx * dx + dy * dy);
-      
-      if (distance <= node.radius) {
-        this.killedPlayer = true;
-        return;
-      }
-    }
+  private checkPlayerHit(_player: Player): void {
   }
 
   render(renderer: Renderer): void {
@@ -238,6 +293,8 @@ export class ElectricBomb extends Weapon {
     const now = Date.now();
     const fadeTime = 500;
 
+    this.chainNodes = this.chainNodes.filter(node => now - node.activatedAt < fadeTime + 100);
+
     for (const node of this.chainNodes) {
       const age = now - node.activatedAt;
       const opacity = Math.max(0, 1 - age / fadeTime);
@@ -264,6 +321,8 @@ export class ElectricBomb extends Weapon {
   private renderLightning(renderer: Renderer): void {
     const now = Date.now();
     const lightningFadeTime = 500;
+
+    this.lightningArcs = this.lightningArcs.filter(arc => now - arc.createdAt < lightningFadeTime);
 
     for (const arc of this.lightningArcs) {
       const age = now - arc.createdAt;
@@ -336,12 +395,16 @@ export class ElectricBomb extends Weapon {
     }
   }
 
+  isActive(): boolean {
+    return this.state === 'ROLLING';
+  }
+
   isComplete(): boolean {
     return this.state === 'COMPLETE';
   }
 
   hasKilledPlayer(): boolean {
-    return this.killedPlayer;
+    return false;
   }
 
   getExplosionCount(): number {

@@ -10,8 +10,9 @@ const PATTERN_DIFFICULTY_MAP: Map<PatternType, Difficulty> = new Map([
   [PatternType.CONTAINMENT_RING, Difficulty.EASY],
   [PatternType.SWEEPER_LINE, Difficulty.MEDIUM],
   [PatternType.GATLING_POINT, Difficulty.MEDIUM],
-  [PatternType.BOUNCING_BALL, Difficulty.HARD],
+  [PatternType.BOUNCING_BALL, Difficulty.MEDIUM],
   [PatternType.BULLET_HELL, Difficulty.HARD],
+  [PatternType.CYCLONE, Difficulty.HARD],
 ]);
 
 const SCORE_THRESHOLDS = {
@@ -22,14 +23,22 @@ const SCORE_THRESHOLDS = {
 export class PatternManager {
   private activePatterns: Pattern[] = [];
   private patternTimer: number = 0;
-  private readonly patternInterval: number = 8000;
+  private nextPatternInterval: number = 3000;
   private currentScore: number = 0;
   private allDotsCache: Dot[] = [];
 
+  private readonly minInterval: number = 2000;
+  private readonly maxInterval: number = 4000;
+
+  constructor() {
+    this.nextPatternInterval = this.getRandomInterval();
+  }
+
   update(dt: number, playerPosition: Vector2, bounds: Bounds): void {
     this.patternTimer += dt * 1000;
-    if (this.patternTimer >= this.patternInterval) {
+    if (this.patternTimer >= this.nextPatternInterval) {
       this.patternTimer = 0;
+      this.nextPatternInterval = this.getRandomInterval();
       const nextType = this.selectNextPattern();
       if (nextType) {
         this.spawnPattern(nextType, playerPosition, bounds);
@@ -125,10 +134,10 @@ export class PatternManager {
       return;
     }
 
+    toastManager.show(`Pattern: ${this.formatPatternName(type)}`, 'info');
     pattern.spawn(playerPosition, bounds);
     pattern.start();
     this.activePatterns.push(pattern);
-    toastManager.show(`Pattern: ${this.formatPatternName(type)}`, 'info');
   }
 
   private isPatternTypeActive(type: PatternType): boolean {
@@ -177,7 +186,11 @@ export class PatternManager {
   }
 
   getPatternInterval(): number {
-    return this.patternInterval;
+    return this.nextPatternInterval;
+  }
+
+  private getRandomInterval(): number {
+    return this.minInterval + Math.random() * (this.maxInterval - this.minInterval);
   }
 
   private formatPatternName(type: PatternType): string {

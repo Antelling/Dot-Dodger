@@ -1,5 +1,4 @@
 import { Pattern } from './Pattern';
-import { Dot } from '../entities/Dot';
 import { PatternType, Difficulty, Bounds, Vector2 } from '../types';
 import { randomPosition } from '../utils/math';
 import { DOT_RADIUS } from '../utils/constants';
@@ -37,11 +36,11 @@ export class ZombieSnow extends Pattern {
       this.elapsedSinceSpawn += dt * 1000;
       if (this.elapsedSinceSpawn >= this.spawnInterval) {
         this.elapsedSinceSpawn = 0;
-        this.spawnDot(playerPosition, bounds);
+        this.spawnDotAtRandomPosition(bounds);
       }
     }
 
-    for (let i = 0; i < this.dots.length; i++) {
+    for (let i = this.dots.length - 1; i >= 0; i--) {
       const dot = this.dots[i];
       if (!dot.isLethal()) {
         dot.update(dt, bounds, playerPosition);
@@ -49,6 +48,13 @@ export class ZombieSnow extends Pattern {
       }
 
       const pos = dot.getPosition();
+
+      if (pos.x < -100 || pos.x > bounds.width + 100 ||
+          pos.y < -100 || pos.y > bounds.height + 100) {
+        this.dots.splice(i, 1);
+        continue;
+      }
+
       const dx = playerPosition.x - pos.x;
       const dy = playerPosition.y - pos.y;
       const dist = Math.sqrt(dx * dx + dy * dy);
@@ -62,10 +68,10 @@ export class ZombieSnow extends Pattern {
     }
   }
 
-  private spawnDot(_playerPosition: Vector2, bounds: Bounds): void {
+  private spawnDotAtRandomPosition(bounds: Bounds): void {
     const margin = DOT_RADIUS * 2;
     const pos = randomPosition(bounds, margin);
-    this.dots.push(new Dot(pos.x, pos.y, this.type));
+    this.spawnDot(pos.x, pos.y);
   }
 
   isComplete(): boolean {

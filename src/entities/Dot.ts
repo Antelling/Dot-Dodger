@@ -3,6 +3,9 @@ import { Renderer } from '../renderer/Renderer';
 import { Vec2, wrapInPlace } from '../utils/math';
 import { DOT_RADIUS, DOT_SPAWN_ANIMATION_DURATION, DOT_SPAWN_SCALE_MAX, COLOR_DOT, COLOR_DOT_SPAWNING, COLOR_DOT_FROZEN } from '../utils/constants';
 
+const FROZEN_BORDER_MAX_THICKNESS = 8;
+const FROZEN_BORDER_COLOR = '#00CCFF';
+
 const SPAWN_INV_DURATION = 1 / DOT_SPAWN_ANIMATION_DURATION;
 const SCALE_RANGE = DOT_SPAWN_SCALE_MAX - 1;
 
@@ -23,6 +26,7 @@ export class Dot {
   private isZombie: boolean = false;
   private readonly zombieSpeed: number = 50;
   private vibrationOffset: Vector2 = { x: 0, y: 0 };
+  private frozenBorderThickness: number = FROZEN_BORDER_MAX_THICKNESS;
 
   constructor(x: number, y: number, patternId: string | null = null) {
     this.position = new Vec2(x, y);
@@ -47,6 +51,9 @@ export class Dot {
     
     if (this.state === DotState.FROZEN) {
       this.frozenTime += dt * 1000;
+
+      const frozenProgress = Math.min(this.frozenTime / this.thawDuration, 1);
+      this.frozenBorderThickness = FROZEN_BORDER_MAX_THICKNESS * (1 - frozenProgress);
 
       const timeUntilThaw = this.thawDuration - this.frozenTime;
       if (timeUntilThaw <= this.preThawWarningTime && timeUntilThaw > 0) {
@@ -120,6 +127,21 @@ export class Dot {
         `rgba(255,102,102,${alpha.toFixed(2)})`
       );
     }
+
+    if (this.state === DotState.FROZEN) {
+      renderer.drawCircle(
+        renderX,
+        renderY,
+        currentRadius + this.frozenBorderThickness,
+        FROZEN_BORDER_COLOR
+      );
+      renderer.drawCircle(
+        renderX,
+        renderY,
+        currentRadius,
+        color
+      );
+    }
   }
 
   isLethal(): boolean {
@@ -136,6 +158,7 @@ export class Dot {
       this.velocity.x = 0;
       this.velocity.y = 0;
       this.frozenTime = 0;
+      this.frozenBorderThickness = FROZEN_BORDER_MAX_THICKNESS;
     }
   }
 
@@ -170,6 +193,13 @@ export class Dot {
   }
 
   getRadius(): number {
+    return this.radius;
+  }
+
+  getEffectiveRadius(): number {
+    if (this.state === DotState.FROZEN) {
+      return this.radius + this.frozenBorderThickness;
+    }
     return this.radius;
   }
 }

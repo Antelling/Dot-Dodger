@@ -44,6 +44,10 @@ export class ToastManager {
     this.toasts.push(toast);
     this.allMessages.push(toast);
 
+    if (this.allMessages.length > 100) {
+      this.allMessages = this.allMessages.slice(-50);
+    }
+
     if (this.toasts.length > this.maxToasts) {
       const removed = this.toasts.shift();
       if (removed) {

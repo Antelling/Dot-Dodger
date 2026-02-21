@@ -74,18 +74,22 @@ export function distance(a: Vector2, b: Vector2): number {
 export function wrap(position: Vector2, bounds: Bounds): Vector2 {
   let x = position.x;
   let y = position.y;
-  while (x < 0) x += bounds.width;
-  while (y < 0) y += bounds.height;
-  x = x % bounds.width;
-  y = y % bounds.height;
+  if (bounds.width > 0 && bounds.height > 0) {
+    while (x < 0) x += bounds.width;
+    while (y < 0) y += bounds.height;
+    x = x % bounds.width;
+    y = y % bounds.height;
+  }
   return { x, y };
 }
 
 export function wrapInPlace(position: Vector2, bounds: Bounds): void {
-  while (position.x < 0) position.x += bounds.width;
-  while (position.y < 0) position.y += bounds.height;
-  position.x = position.x % bounds.width;
-  position.y = position.y % bounds.height;
+  if (bounds.width > 0 && bounds.height > 0) {
+    while (position.x < 0) position.x += bounds.width;
+    while (position.y < 0) position.y += bounds.height;
+    position.x = position.x % bounds.width;
+    position.y = position.y % bounds.height;
+  }
 }
 
 export function circleCollision(

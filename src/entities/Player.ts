@@ -13,7 +13,7 @@ export class Player {
     this.position = new Vec2(x, y);
   }
 
-  update(dt: number, inputVelocity: Vector2, bounds: Bounds): void {
+  update(dt: number, inputVelocity: Vector2, bounds: Bounds, shouldWrap: boolean = true): void {
     this.velocity.x = inputVelocity.x;
     this.velocity.y = inputVelocity.y;
     
@@ -24,7 +24,17 @@ export class Player {
     this.position.x += this.velocity.x * dt;
     this.position.y += this.velocity.y * dt;
     
-    wrapInPlace(this.position, bounds);
+    if (shouldWrap) {
+      wrapInPlace(this.position, bounds);
+    } else {
+      this.position.x = Math.max(0, Math.min(bounds.width, this.position.x));
+      this.position.y = Math.max(0, Math.min(bounds.height, this.position.y));
+    }
+  }
+
+  setPosition(x: number, y: number): void {
+    this.position.x = x;
+    this.position.y = y;
   }
 
   render(renderer: Renderer): void {

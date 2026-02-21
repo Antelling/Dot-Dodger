@@ -1,5 +1,4 @@
 import { Pattern } from './Pattern';
-import { Dot } from '../entities/Dot';
 import { PatternType, Difficulty, Bounds, Vector2 } from '../types';
 
 export class SparseGrid extends Pattern {
@@ -29,7 +28,7 @@ export class SparseGrid extends Pattern {
   }
 
   update(dt: number, playerPosition: Vector2, bounds: Bounds): void {
-    for (let i = 0; i < this.dots.length; i++) {
+    for (let i = this.dots.length - 1; i >= 0; i--) {
       const dot = this.dots[i];
       if (!dot.isLethal()) {
         dot.update(dt, bounds, playerPosition);
@@ -37,6 +36,13 @@ export class SparseGrid extends Pattern {
       }
 
       const pos = dot.getPosition();
+
+      if (pos.x < -100 || pos.x > bounds.width + 100 ||
+          pos.y < -100 || pos.y > bounds.height + 100) {
+        this.dots.splice(i, 1);
+        continue;
+      }
+
       const dx = playerPosition.x - pos.x;
       const dy = playerPosition.y - pos.y;
       const distance = Math.sqrt(dx * dx + dy * dy);
@@ -61,10 +67,7 @@ export class SparseGrid extends Pattern {
       for (let col = 0; col < cols; col++) {
         const x = margin + col * spacing + spacing / 2;
         const y = margin + row * spacing + spacing / 2;
-        const dot = new Dot(x, y, this.type);
-        dot.velocity.x = 0;
-        dot.velocity.y = 0;
-        this.dots.push(dot);
+        this.spawnDot(x, y, { x: 0, y: 0 });
       }
     }
   }

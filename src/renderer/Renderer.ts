@@ -16,6 +16,7 @@ export class Renderer {
   private ctx: CanvasRenderingContext2D;
   private width: number = 0;
   private height: number = 0;
+  private dpr: number = 1;
 
   private circleBatches: Map<string, CircleBatch[]> = new Map();
   private outlineBatches: Map<string, CircleOutlineBatch[]> = new Map();
@@ -41,10 +42,17 @@ export class Renderer {
   }
 
   resize(): void {
+    this.dpr = window.devicePixelRatio || 1;
     this.width = window.innerWidth;
     this.height = window.innerHeight;
-    this.canvas.width = this.width;
-    this.canvas.height = this.height;
+    
+    // Set canvas backing store to physical pixel size for crisp rendering
+    this.canvas.width = Math.floor(this.width * this.dpr);
+    this.canvas.height = Math.floor(this.height * this.dpr);
+    
+    // Keep CSS size at logical pixels
+    this.canvas.style.width = `${this.width}px`;
+    this.canvas.style.height = `${this.height}px`;
   }
 
   getBounds(): { width: number; height: number } {
@@ -53,9 +61,9 @@ export class Renderer {
 
   clear(color: string = '#000000'): void {
     this.ctx.fillStyle = color;
-    this.ctx.fillRect(0, 0, this.width, this.height);
+    this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
     this.ctx.save();
-    this.ctx.scale(Renderer.SCALE, Renderer.SCALE);
+    this.ctx.scale(this.dpr * Renderer.SCALE, this.dpr * Renderer.SCALE);
   }
 
   endFrame(): void {
@@ -184,6 +192,14 @@ export class Renderer {
     this.ctx.fillStyle = color;
     this.ctx.textAlign = 'center';
     this.ctx.textBaseline = 'middle';
+    this.ctx.fillText(text, x, y);
+  }
+
+  drawTextLeft(text: string, x: number, y: number, color: string = '#FFFFFF', fontSize: number = 16): void {
+    this.ctx.font = `${fontSize}px Arial`;
+    this.ctx.fillStyle = color;
+    this.ctx.textAlign = 'left';
+    this.ctx.textBaseline = 'top';
     this.ctx.fillText(text, x, y);
   }
 

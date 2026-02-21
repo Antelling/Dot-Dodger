@@ -1,89 +1,123 @@
 import { Pattern } from './Pattern';
-import { Dot } from '../entities/Dot';
 import { PatternType, Difficulty, Bounds, Vector2 } from '../types';
 import { DOT_RADIUS } from '../utils/constants';
 
+interface DotOffset {
+  x: number;
+  y: number;
+}
+
 export class BouncingBall extends Pattern {
   readonly type = PatternType.BOUNCING_BALL;
-  difficulty: Difficulty = Difficulty.EASY;
+  difficulty: Difficulty = Difficulty.MEDIUM;
 
-  private readonly duration: number = 25000;
-  private circleRadius: number = 50;
-  private dotSpeed: number = 150;
+  private readonly duration: number = 30000;
+  private readonly ballRadius: number = 120;
+  private readonly dotCount: number = 200;
+  private centerPosition: Vector2 = { x: 0, y: 0 };
+  private centerVelocity: Vector2 = { x: 0, y: 0 };
+  private dotOffsets: DotOffset[] = [];
+  private speed: number = 120;
 
-  constructor(difficulty: Difficulty = Difficulty.EASY) {
+  constructor(difficulty: Difficulty = Difficulty.MEDIUM) {
     super();
     this.difficulty = difficulty;
     switch (difficulty) {
       case Difficulty.HARD:
-        this.dotSpeed = 300;
-        this.circleRadius = 80;
+        this.speed = 180;
         break;
       case Difficulty.MEDIUM:
-        this.dotSpeed = 200;
-        this.circleRadius = 60;
+        this.speed = 120;
         break;
       default:
-        this.dotSpeed = 150;
-        this.circleRadius = 50;
+        this.speed = 80;
     }
   }
 
   spawn(_center: Vector2, bounds: Bounds): void {
     this.start();
-    this.spawnBalls(bounds);
+    this.centerPosition = {
+      x: bounds.width / 2,
+      y: bounds.height / 2
+    };
+
+    const angle = Math.random() * Math.PI * 2;
+    this.centerVelocity = {
+      x: Math.cos(angle) * this.speed,
+      y: Math.sin(angle) * this.speed
+    };
+
+    this.spawnDots();
   }
 
-  update(dt: number, _playerPosition: Vector2, bounds: Bounds): void {
-    for (let i = 0; i < this.dots.length; i++) {
-      const dot = this.dots[i];
-      if (!dot.isLethal()) {
-        dot.update(dt, bounds, _playerPosition);
-        continue;
+  private spawnDots(): void {
+    this.dotOffsets = [];
+
+    const dotsPerRing = 20;
+    const ringCount = Math.ceil(this.dotCount / dotsPerRing);
+
+    for (let ring = 0; ring < ringCount; ring++) {
+      const ringRadius = (this.ballRadius * (ring + 1)) / ringCount;
+      const dotsInThisRing = Math.min(dotsPerRing, this.dotCount - this.dotOffsets.length);
+
+      for (let i = 0; i < dotsInThisRing; i++) {
+        const angle = (i / dotsInThisRing) * Math.PI * 2;
+        this.dotOffsets.push({
+          x: Math.cos(angle) * ringRadius,
+          y: Math.sin(angle) * ringRadius
+        });
       }
 
-      const pos = dot.getPosition();
-      const vel = dot.velocity;
+      if (this.dotOffsets.length >= this.dotCount) break;
+    }
 
-      if (pos.x < DOT_RADIUS) {
-        vel.x = Math.abs(vel.x);
-        dot.position.x = DOT_RADIUS;
-      } else if (pos.x > bounds.width - DOT_RADIUS) {
-        vel.x = -Math.abs(vel.x);
-        dot.position.x = bounds.width - DOT_RADIUS;
-      }
-
-      if (pos.y < DOT_RADIUS) {
-        vel.y = Math.abs(vel.y);
-        dot.position.y = DOT_RADIUS;
-      } else if (pos.y > bounds.height - DOT_RADIUS) {
-        vel.y = -Math.abs(vel.y);
-        dot.position.y = bounds.height - DOT_RADIUS;
-      }
-
-      dot.update(dt, bounds, _playerPosition);
+    for (let i = 0; i < this.dotOffsets.length; i++) {
+      const offset = this.dotOffsets[i];
+      this.spawnDot(
+        this.centerPosition.x + offset.x,
+        this.centerPosition.y + offset.y,
+        { x: this.centerVelocity.x, y: this.centerVelocity.y }
+      );
     }
   }
 
-  private spawnBalls(bounds: Bounds): void {
-    const centerX = bounds.width / 2;
-    const centerY = bounds.height / 2;
+  update(dt: number, _playerPosition: Vector2, bounds: Bounds): void {
+    this.centerPosition.x += this.centerVelocity.x * dt;
+    this.centerPosition.y += this.centerVelocity.y * dt;
 
-    for (let i = 0; i < 300; i++) {
-      const angle = (i / 300) * Math.PI * 2;
-      const offsetAngle = angle + (Math.random() - 0.5) * 0.2;
-      const radius = this.circleRadius * (0.8 + Math.random() * 0.4);
-      const x = centerX + Math.cos(offsetAngle) * radius;
-      const y = centerY + Math.sin(offsetAngle) * radius;
+    const minX = this.ballRadius + DOT_RADIUS;
+    const maxX = bounds.width - this.ballRadius - DOT_RADIUS;
+    const minY = this.ballRadius + DOT_RADIUS;
+    const maxY = bounds.height - this.ballRadius - DOT_RADIUS;
 
-      const dot = new Dot(x, y, this.type);
+    if (this.centerPosition.x <= minX) {
+      this.centerPosition.x = minX;
+      this.centerVelocity.x = Math.abs(this.centerVelocity.x);
+    } else if (this.centerPosition.x >= maxX) {
+      this.centerPosition.x = maxX;
+      this.centerVelocity.x = -Math.abs(this.centerVelocity.x);
+    }
 
-      const velAngle = offsetAngle + Math.PI / 2 + (Math.random() - 0.5) * 0.5;
-      const speed = this.dotSpeed * (0.5 + Math.random() * 1);
-      dot.velocity.x = Math.cos(velAngle) * speed;
-      dot.velocity.y = Math.sin(velAngle) * speed;
+    if (this.centerPosition.y <= minY) {
+      this.centerPosition.y = minY;
+      this.centerVelocity.y = Math.abs(this.centerVelocity.y);
+    } else if (this.centerPosition.y >= maxY) {
+      this.centerPosition.y = maxY;
+      this.centerVelocity.y = -Math.abs(this.centerVelocity.y);
+    }
 
-      this.dots.push(dot);
+    for (let i = 0; i < this.dots.length; i++) {
+      const dot = this.dots[i];
+      const offset = this.dotOffsets[i];
+
+      if (offset && !dot.isDead()) {
+        dot.position.x = this.centerPosition.x + offset.x;
+        dot.position.y = this.centerPosition.y + offset.y;
+        dot.velocity.x = this.centerVelocity.x;
+        dot.velocity.y = this.centerVelocity.y;
+      }
+
+      dot.update(dt, bounds, _playerPosition);
     }
   }
 

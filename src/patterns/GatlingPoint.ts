@@ -1,5 +1,4 @@
 import { Pattern } from './Pattern';
-import { Dot } from '../entities/Dot';
 import { PatternType, Difficulty, Bounds, Vector2 } from '../types';
 import { randomPosition } from '../utils/math';
 import { DOT_RADIUS } from '../utils/constants';
@@ -43,11 +42,11 @@ export class GatlingPoint extends Pattern {
       this.elapsedSinceSpawn += dt * 1000;
       if (this.elapsedSinceSpawn >= this.shootInterval) {
         this.elapsedSinceSpawn = 0;
-        this.spawnDot(playerPosition, bounds);
+        this.spawnDotAtPoint(playerPosition);
       }
     }
 
-    for (let i = 0; i < this.dots.length; i++) {
+    for (let i = this.dots.length - 1; i >= 0; i--) {
       const dot = this.dots[i];
       if (!dot.isLethal()) {
         dot.update(dt, bounds, playerPosition);
@@ -56,6 +55,12 @@ export class GatlingPoint extends Pattern {
 
       const pos = dot.getPosition();
       const vel = dot.velocity;
+
+      if (pos.x < -100 || pos.x > bounds.width + 100 ||
+          pos.y < -100 || pos.y > bounds.height + 100) {
+        this.dots.splice(i, 1);
+        continue;
+      }
 
       if (pos.x < DOT_RADIUS || pos.x > bounds.width - DOT_RADIUS) {
         vel.x = -vel.x;
@@ -68,17 +73,19 @@ export class GatlingPoint extends Pattern {
     }
   }
 
-  private spawnDot(playerPosition: Vector2, _bounds: Bounds): void {
+  private spawnDotAtPoint(playerPosition: Vector2): void {
     const dx = playerPosition.x - this.spawnPoint.x;
     const dy = playerPosition.y - this.spawnPoint.y;
     const dist = Math.sqrt(dx * dx + dy * dy);
 
-    const dot = new Dot(this.spawnPoint.x, this.spawnPoint.y, this.type);
     if (dist > 0) {
-      dot.velocity.x = (dx / dist) * this.dotSpeed;
-      dot.velocity.y = (dy / dist) * this.dotSpeed;
+      this.spawnDot(this.spawnPoint.x, this.spawnPoint.y, {
+        x: (dx / dist) * this.dotSpeed,
+        y: (dy / dist) * this.dotSpeed
+      });
+    } else {
+      this.spawnDot(this.spawnPoint.x, this.spawnPoint.y);
     }
-    this.dots.push(dot);
   }
 
   isComplete(): boolean {

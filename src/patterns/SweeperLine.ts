@@ -1,5 +1,4 @@
 import { Pattern } from './Pattern';
-import { Dot } from '../entities/Dot';
 import { PatternType, Difficulty, Bounds, Vector2 } from '../types';
 
 export class SweeperLine extends Pattern {
@@ -7,146 +6,150 @@ export class SweeperLine extends Pattern {
   difficulty: Difficulty = Difficulty.EASY;
 
   private readonly duration: number = 20000;
-  private readonly speed: number = 100;
-  private readonly holes: number = 5;
-  private lineDirection: number = 0;
-  private linePosition: number = 0;
-  private lineSpeed: number = 0;
+  private readonly dotSpacing: number = 20;
+  private readonly holeSize: number = 40; // Size of each hole in pixels
+
+  private isHorizontal: boolean = true;
+  private lineVelocity: number = 0;
+  private sweepSpeed: number = 150;
+  // For horizontal line: this is the Y position (sweeps up/down), offset is X
+  // For vertical line: this is the X position (sweeps left/right), offset is Y
+  private linePos: number = 0;
+  private lineOffset: number = 0;
+  private dotOffsets: number[] = []; // Fixed offsets for each dot along the line
 
   constructor(difficulty: Difficulty = Difficulty.EASY) {
     super();
     this.difficulty = difficulty;
     switch (difficulty) {
       case Difficulty.HARD:
-        this.lineSpeed = 3;
+        this.sweepSpeed = 220;
         break;
       case Difficulty.MEDIUM:
-        this.lineSpeed = 2;
+        this.sweepSpeed = 180;
         break;
       default:
-        this.lineSpeed = 1;
+        this.sweepSpeed = 140;
     }
   }
 
   spawn(_center: Vector2, bounds: Bounds): void {
     this.start();
-    this.lineDirection = Math.random() > 0.5 ? 1 : -1;
-    const axis = Math.floor(Math.random() * 4);
-    this.linePosition = -100;
 
-    if (axis === 0) {
-      this.spawnHorizontalLine(bounds, 'x', 0);
-    } else if (axis === 1) {
-      this.spawnHorizontalLine(bounds, 'x', bounds.width);
-    } else if (axis === 2) {
-      this.spawnVerticalLine(bounds, 'y', 0);
+    // Randomly choose horizontal or vertical orientation
+    this.isHorizontal = Math.random() > 0.5;
+
+    // Random offset position for the line (where it sits on the perpendicular axis)
+    if (this.isHorizontal) {
+      // Horizontal line at random X position, sweeps up/down
+      this.lineOffset = Math.random() * (bounds.width - 200) + 100;
     } else {
-      this.spawnVerticalLine(bounds, 'y', bounds.height);
+      // Vertical line at random Y position, sweeps left/right
+      this.lineOffset = Math.random() * (bounds.height - 200) + 100;
+    }
+
+    // Start at one edge and sweep toward the other
+    if (this.isHorizontal) {
+      // Start at top or bottom
+      this.lineVelocity = Math.random() > 0.5 ? this.sweepSpeed : -this.sweepSpeed;
+      this.linePos = this.lineVelocity > 0 ? -50 : bounds.height + 50;
+    } else {
+      // Start at left or right
+      this.lineVelocity = Math.random() > 0.5 ? this.sweepSpeed : -this.sweepSpeed;
+      this.linePos = this.lineVelocity > 0 ? -50 : bounds.width + 50;
+    }
+
+    // Generate the line with holes
+    this.generateLineWithHoles(bounds);
+  }
+
+  private generateLineWithHoles(bounds: Bounds): void {
+    const numHoles = Math.floor(Math.random() * 2) + 2; // 2-3 holes
+    const lineLength = this.isHorizontal ? bounds.height : bounds.width;
+    const numDots = Math.floor((lineLength - 100) / this.dotSpacing);
+
+    // Generate hole positions (indices where dots should NOT spawn)
+    const holeSet = new Set<number>();
+    const holeWidthDots = Math.ceil(this.holeSize / this.dotSpacing);
+
+    for (let h = 0; h < numHoles; h++) {
+      // Random position along the line, avoiding edges
+      const holeCenter = Math.floor(Math.random() * (numDots - 10)) + 5;
+      for (let i = -Math.floor(holeWidthDots / 2); i <= Math.floor(holeWidthDots / 2); i++) {
+        holeSet.add(holeCenter + i);
+      }
+    }
+
+    // Spawn dots at fixed offsets along the line
+    const startOffset = (lineLength - (numDots * this.dotSpacing)) / 2;
+
+    for (let i = 0; i < numDots; i++) {
+      if (!holeSet.has(i)) {
+        const offset = startOffset + (i * this.dotSpacing);
+        this.dotOffsets.push(offset);
+
+        // Spawn dot - it will be positioned correctly in the first update
+        if (this.isHorizontal) {
+          // Horizontal line: dots vary in X (offset), same Y (sweeps)
+          this.spawnDot(this.lineOffset + offset - (lineLength / 2), this.linePos, { x: 0, y: 0 });
+        } else {
+          // Vertical line: dots vary in Y (offset), same X (sweeps)
+          this.spawnDot(this.linePos, this.lineOffset + offset - (lineLength / 2), { x: 0, y: 0 });
+        }
+      }
     }
   }
 
   update(dt: number, _playerPosition: Vector2, bounds: Bounds): void {
-    if (this.elapsedMs <= this.duration) {
-      this.linePosition += this.lineSpeed;
+    // Move the line
+    this.linePos += this.lineVelocity * dt;
+
+    // Reverse direction when we go off-screen (sweep back and forth forever)
+    if (this.isHorizontal) {
+      if (this.lineVelocity > 0 && this.linePos > bounds.height + 50) {
+        this.lineVelocity = -this.sweepSpeed;
+      } else if (this.lineVelocity < 0 && this.linePos < -50) {
+        this.lineVelocity = this.sweepSpeed;
+      }
+    } else {
+      if (this.lineVelocity > 0 && this.linePos > bounds.width + 50) {
+        this.lineVelocity = -this.sweepSpeed;
+      } else if (this.lineVelocity < 0 && this.linePos < -50) {
+        this.lineVelocity = this.sweepSpeed;
+      }
     }
 
-    for (let i = this.dots.length - 1; i >= 0; i--) {
+    // Update all dot positions to maintain formation
+    const lineLength = this.isHorizontal ? bounds.height : bounds.width;
+    for (let i = 0; i < this.dots.length; i++) {
       const dot = this.dots[i];
-      const isLethal = dot.isLethal();
+      const offset = this.dotOffsets[i];
 
-      if (!isLethal) {
-        dot.update(dt, bounds, _playerPosition);
-        continue;
+      // Keep dots in formation - position them along the moving line
+      if (this.isHorizontal) {
+        // Horizontal line: X varies by offset, Y is the sweeping position
+        dot.position.x = this.lineOffset + offset - (lineLength / 2);
+        dot.position.y = this.linePos;
+      } else {
+        // Vertical line: Y varies by offset, X is the sweeping position
+        dot.position.x = this.linePos;
+        dot.position.y = this.lineOffset + offset - (lineLength / 2);
       }
 
+      // Call update for state management (spawn animations, etc)
       dot.update(dt, bounds, _playerPosition);
-      const pos = dot.getPosition();
+    }
 
-      if (this.isOffScreen(pos, bounds) || this.isBeyondLine(pos)) {
+    // Clean up dead dots
+    for (let i = this.dots.length - 1; i >= 0; i--) {
+      if (this.dots[i].isDead()) {
         this.dots.splice(i, 1);
+        this.dotOffsets.splice(i, 1);
       }
     }
-  }
-
-  private spawnHorizontalLine(bounds: Bounds, axis: 'x' | 'y', edgeValue: number): void {
-    const start = this.lineDirection > 0 ? edgeValue - 100 : edgeValue;
-    const end = this.lineDirection > 0 ? bounds.width : 0;
-    const direction = this.lineDirection > 0 ? 1 : -1;
-
-    let current = start;
-    const step = 5;
-    let holeCounter = 0;
-    let lastHolePos = -1;
-
-    while ((direction > 0 && current < end) || (direction < 0 && current > end)) {
-      const distFromHole = Math.abs(current - lastHolePos);
-      const isHole = holeCounter < this.holes && distFromHole > 60;
-
-      if (!isHole) {
-        const dot = new Dot(
-          axis === 'x' ? current : edgeValue,
-          axis === 'y' ? current : edgeValue,
-          this.type
-        );
-        dot.velocity.x = this.speed * direction;
-        dot.velocity.y = 0;
-        this.dots.push(dot);
-      }
-
-      if (isHole) {
-        holeCounter++;
-        lastHolePos = current;
-      }
-
-      current += step;
-    }
-  }
-
-  private spawnVerticalLine(bounds: Bounds, axis: 'x' | 'y', edgeValue: number): void {
-    const start = this.lineDirection > 0 ? edgeValue - 100 : edgeValue;
-    const end = this.lineDirection > 0 ? bounds.height : 0;
-    const direction = this.lineDirection > 0 ? 1 : -1;
-
-    let current = start;
-    const step = 5;
-    let holeCounter = 0;
-    let lastHolePos = -1;
-
-    while ((direction > 0 && current < end) || (direction < 0 && current > end)) {
-      const distFromHole = Math.abs(current - lastHolePos);
-      const isHole = holeCounter < this.holes && distFromHole > 60;
-
-      if (!isHole) {
-        const dot = new Dot(
-          axis === 'x' ? edgeValue : current,
-          axis === 'y' ? current : edgeValue,
-          this.type
-        );
-        dot.velocity.x = 0;
-        dot.velocity.y = this.speed * direction;
-        this.dots.push(dot);
-      }
-
-      if (isHole) {
-        holeCounter++;
-        lastHolePos = current;
-      }
-
-      current += step;
-    }
-  }
-
-  private isOffScreen(pos: Vector2, bounds: Bounds): boolean {
-    return pos.x < -100 || pos.x > bounds.width + 100 || pos.y < -100 || pos.y > bounds.height + 100;
-  }
-
-  private isBeyondLine(pos: Vector2): boolean {
-    const dx = this.lineDirection > 0 ? pos.x - this.linePosition : this.linePosition - pos.x;
-    const threshold = 100;
-    return this.lineDirection > 0 ? dx > threshold : dx < -threshold;
   }
 
   isComplete(): boolean {
-    return this.elapsedMs > this.duration && this.getDots().length === 0;
+    return this.elapsedMs > this.duration && this.dots.length === 0;
   }
 }

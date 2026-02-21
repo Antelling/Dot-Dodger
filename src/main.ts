@@ -12,6 +12,7 @@ import { BouncingBall } from './patterns/BouncingBall';
 import { GatlingPoint } from './patterns/GatlingPoint';
 import { BulletHell } from './patterns/BulletHell';
 import { ContainmentRing } from './patterns/ContainmentRing';
+import { Cyclone } from './patterns/Cyclone';
 
 import { Blaster } from './weapons/Blaster';
 import { Chainsaw } from './weapons/Chainsaw';
@@ -30,6 +31,7 @@ PatternRegistry.register(PatternType.BOUNCING_BALL, BouncingBall);
 PatternRegistry.register(PatternType.GATLING_POINT, GatlingPoint);
 PatternRegistry.register(PatternType.BULLET_HELL, BulletHell);
 PatternRegistry.register(PatternType.CONTAINMENT_RING, ContainmentRing);
+PatternRegistry.register(PatternType.CYCLONE, Cyclone);
 
 WeaponRegistry.register(WeaponType.BLASTER, Blaster);
 WeaponRegistry.register(WeaponType.CHAINSAW, Chainsaw);

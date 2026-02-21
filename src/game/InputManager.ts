@@ -3,21 +3,31 @@ import { PLAYER_MAX_SPEED } from '../utils/constants';
 
 export type PermissionState = 'unknown' | 'pending' | 'granted' | 'denied';
 
+interface TiltBasis {
+  gamma: number;
+  beta: number;
+}
+
 export class InputManager {
   private velocity: Vector2 = { x: 0, y: 0 };
   private permissionState: PermissionState = 'unknown';
-  private betaBasis: number | null = null;
+  private tiltBasis: TiltBasis | null = null;
 
   constructor() {
     this.checkPermissionAvailability();
+    this.trackScreenOrientation();
   }
 
-  setBetaBasis(basis: number): void {
-    this.betaBasis = basis;
+  private trackScreenOrientation(): void {
+    window.addEventListener('orientationchange', () => {});
   }
 
-  getCurrentBeta(): number | null {
-    return this.betaBasis;
+  setTiltBasis(basis: TiltBasis): void {
+    this.tiltBasis = basis;
+  }
+
+  getCurrentTiltBasis(): TiltBasis | null {
+    return this.tiltBasis;
   }
 
   private checkPermissionAvailability(): void {
@@ -63,10 +73,38 @@ export class InputManager {
     window.addEventListener('deviceorientation', this.handleOrientation.bind(this));
   }
 
-  private lastBeta: number = 45;
+  private lastTilt: TiltBasis = { gamma: 0, beta: 45 };
 
   calibrateTiltBasis(): void {
-    this.betaBasis = this.lastBeta;
+    this.tiltBasis = { ...this.lastTilt };
+  }
+
+  private getScreenOrientation(): number {
+    if (screen.orientation) {
+      return screen.orientation.angle;
+    }
+    return 0;
+  }
+
+  private transformTiltToGameCoords(gamma: number, beta: number, orientation: number): { x: number; y: number } {
+    const tiltX = gamma;
+    const tiltY = beta - 45;
+    
+    switch (orientation) {
+      case 0:
+        return { x: tiltX, y: tiltY };
+      case 90:
+      case -270:
+        return { x: -tiltY, y: tiltX };
+      case 180:
+      case -180:
+        return { x: -tiltX, y: -tiltY };
+      case -90:
+      case 270:
+        return { x: tiltY, y: -tiltX };
+      default:
+        return { x: tiltX, y: tiltY };
+    }
   }
 
   private handleOrientation(event: DeviceOrientationEvent): void {
@@ -76,11 +114,23 @@ export class InputManager {
     
     const gamma = event.gamma;
     const beta = event.beta;
-    this.lastBeta = beta;
+    this.lastTilt = { gamma, beta };
     
-    const normalizedX = this.clamp(gamma / 22.5, -1, 1);
-    const betaReference = this.betaBasis !== null ? this.betaBasis : beta;
-    const normalizedY = this.clamp((beta - betaReference) / 22.5, -1, 1);
+    const orientation = this.getScreenOrientation();
+    const reference = this.tiltBasis;
+    
+    let gammaDelta = gamma;
+    let betaDelta = beta - 45;
+    
+    if (reference !== null) {
+      gammaDelta = gamma - reference.gamma;
+      betaDelta = (beta - 45) - (reference.beta - 45);
+    }
+    
+    const gameCoords = this.transformTiltToGameCoords(gammaDelta, betaDelta + 45, orientation);
+    
+    const normalizedX = this.clamp(gameCoords.x / 22.5, -1, 1);
+    const normalizedY = this.clamp(gameCoords.y / 22.5, -1, 1);
     
     this.velocity.x = normalizedX * PLAYER_MAX_SPEED;
     this.velocity.y = normalizedY * PLAYER_MAX_SPEED;

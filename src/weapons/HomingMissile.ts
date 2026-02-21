@@ -15,21 +15,40 @@ interface Missile {
   active: boolean;
 }
 
+interface Explosion {
+  x: number;
+  y: number;
+  startTime: number;
+  duration: number;
+  mainRadius: number;
+  subExplosions: { x: number; y: number; radius: number }[];
+  hasAppliedDamage: boolean;
+  active: boolean;
+}
+
 const MISSILE_RADIUS = 6;
 const MISSILE_COLOR = '#FF6B00';
 const MISSILE_TRAIL_COLOR = 'rgba(255, 107, 0, 0.3)';
 const MAX_TURN_RATE = 5 * Math.PI / 180;
 
+const EXPLOSION_MAIN_RADIUS = 45;
+const EXPLOSION_SUB_RADIUS = 15;
+const EXPLOSION_DURATION_MS = 500;
+const EXPLOSION_SUB_DELAY_MS = 250;
+const EXPLOSION_COLOR = '#FFD700';
+
 export class HomingMissile extends Weapon {
   readonly type = WeaponType.HOMING_MISSILE;
 
   private missiles: Missile[] = [];
+  private explosions: Explosion[] = [];
   private readonly missileSpeed: number = 800;
 
   activate(player: Player, dots: Dot[]): void {
     this.start();
     this.dots = dots;
     this.missiles = [];
+    this.explosions = [];
 
     const playerPos = player.getPosition();
     const baseAngle = player.directionAngle;
@@ -86,7 +105,65 @@ export class HomingMissile extends Weapon {
     return angle;
   }
 
+  private createExplosion(x: number, y: number): void {
+    const subExplosions = [];
+    for (let i = 0; i < 4; i++) {
+      const angle = Math.random() * Math.PI * 2;
+      const dist = Math.random() * EXPLOSION_MAIN_RADIUS * 0.6;
+      subExplosions.push({
+        x: Math.cos(angle) * dist,
+        y: Math.sin(angle) * dist,
+        radius: EXPLOSION_SUB_RADIUS * (0.8 + Math.random() * 0.4)
+      });
+    }
+
+    const explosion: Explosion = {
+      x,
+      y,
+      startTime: Date.now(),
+      duration: EXPLOSION_DURATION_MS,
+      mainRadius: EXPLOSION_MAIN_RADIUS,
+      subExplosions,
+      hasAppliedDamage: false,
+      active: true
+    };
+    this.explosions.push(explosion);
+  }
+
+  private applyExplosionDamage(explosion: Explosion, dots: Dot[]): void {
+    if (explosion.hasAppliedDamage) return;
+
+    for (const dot of dots) {
+      if (dot.isDead() || !dot.isLethal()) continue;
+
+      const dotPos = dot.getPosition();
+      const dist = distance({ x: explosion.x, y: explosion.y }, dotPos);
+
+      if (dist < explosion.mainRadius + dot.getRadius()) {
+        dot.kill();
+        this.addKilledDot();
+      }
+    }
+
+    explosion.hasAppliedDamage = true;
+  }
+
   update(_dt: number, _player: Player, dots: Dot[], bounds: Bounds): void {
+    const now = Date.now();
+
+    this.missiles = this.missiles.filter(m => m.active);
+    this.explosions = this.explosions.filter(e => e.active);
+
+    for (const explosion of this.explosions) {
+      const elapsed = now - explosion.startTime;
+      if (elapsed >= explosion.duration) {
+        explosion.active = false;
+      }
+      if (!explosion.hasAppliedDamage) {
+        this.applyExplosionDamage(explosion, dots);
+      }
+    }
+
     for (const missile of this.missiles) {
       if (!missile.active) continue;
 
@@ -131,8 +208,7 @@ export class HomingMissile extends Weapon {
         const dist = distance(missile, dotPos);
 
         if (dist < MISSILE_RADIUS + dot.getRadius()) {
-          dot.kill();
-          this.addKilledDot();
+          this.createExplosion(missile.x, missile.y);
           missile.active = false;
           break;
         }
@@ -142,6 +218,7 @@ export class HomingMissile extends Weapon {
 
   render(renderer: Renderer): void {
     const ctx = renderer.getContext();
+    const now = Date.now();
 
     for (const missile of this.missiles) {
       if (!missile.active) continue;
@@ -167,9 +244,41 @@ export class HomingMissile extends Weapon {
 
       ctx.restore();
     }
+
+    for (const explosion of this.explosions) {
+      if (!explosion.active) continue;
+
+      const elapsed = now - explosion.startTime;
+      const progress = elapsed / explosion.duration;
+      const opacity = 1 - progress;
+
+      ctx.save();
+      ctx.globalAlpha = opacity;
+      ctx.fillStyle = EXPLOSION_COLOR;
+
+      ctx.beginPath();
+      ctx.arc(explosion.x, explosion.y, explosion.mainRadius, 0, Math.PI * 2);
+      ctx.fill();
+
+      if (elapsed >= EXPLOSION_SUB_DELAY_MS) {
+        for (const sub of explosion.subExplosions) {
+          ctx.beginPath();
+          ctx.arc(
+            explosion.x + sub.x,
+            explosion.y + sub.y,
+            sub.radius,
+            0,
+            Math.PI * 2
+          );
+          ctx.fill();
+        }
+      }
+
+      ctx.restore();
+    }
   }
 
   isComplete(): boolean {
-    return this.missiles.every(m => !m.active);
+    return this.missiles.every(m => !m.active) && this.explosions.every(e => !e.active);
   }
 }

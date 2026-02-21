@@ -75,8 +75,8 @@ export class CollisionSystem {
       for (let j = 0; j < cell.length; j++) {
         const dot = cell[j];
         const dotPos = dot.getPosition();
-        const dotRadius = dot.getRadius();
-        
+        const dotRadius = dot.getEffectiveRadius();
+
         if (circleCollision(playerPos, playerRadius, dotPos, dotRadius)) {
           return dot;
         }

@@ -52,7 +52,7 @@ export class DotRepellent extends Weapon {
       0,
       Math.PI * 2
     );
-    ctx.strokeStyle = 'rgba(0, 255, 0, 0.3)';
+    ctx.strokeStyle = 'rgba(128, 128, 128, 0.3)';
     ctx.lineWidth = 3;
     ctx.stroke();
 
