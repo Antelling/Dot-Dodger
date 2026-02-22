@@ -53,7 +53,8 @@ export class IceBomb extends Weapon {
       }
     } else if (this.state === 'FADING') {
       const elapsed = Date.now() - this.explosionStartTime;
-      if (elapsed >= 1000) {
+      // Effect lasts 3000ms to match dot freeze duration
+      if (elapsed >= 3000) {
         this.state = 'COMPLETE';
       }
     }
@@ -65,7 +66,8 @@ export class IceBomb extends Weapon {
       let alpha = 0.6;
       
       if (this.state === 'FADING') {
-        alpha = 0.6 * (1 - (elapsed - 500) / 500);
+        // Fade out over 2500ms (from 500ms to 3000ms)
+        alpha = 0.6 * (1 - (elapsed - 500) / 2500);
       }
       
       if (alpha > 0) {

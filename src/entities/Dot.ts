@@ -129,7 +129,8 @@ export class Dot {
     }
 
     if (this.state === DotState.FROZEN) {
-      renderer.drawCircle(
+      // Draw light blue border as an outline that shrinks as they thaw
+      renderer.drawCircleOutline(
         renderX,
         renderY,
         currentRadius + this.frozenBorderThickness,

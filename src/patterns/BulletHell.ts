@@ -53,6 +53,13 @@ export class BulletHell extends Pattern {
 
     for (let i = this.dots.length - 1; i >= 0; i--) {
       const dot = this.dots[i];
+      
+      // Skip frozen dots - they should not move
+      if (dot.isFrozen()) {
+        dot.update(dt, bounds, _playerPosition);
+        continue;
+      }
+      
       const pos = dot.getPosition();
 
       if (pos.x < -DOT_RADIUS || pos.x > bounds.width + DOT_RADIUS ||

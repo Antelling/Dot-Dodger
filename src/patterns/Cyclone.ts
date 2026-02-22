@@ -1,6 +1,6 @@
 import { Pattern } from './Pattern';
 import { PatternType, Difficulty, Bounds, Vector2 } from '../types';
-import { DOT_RADIUS } from '../utils/constants';
+
 
 export class Cyclone extends Pattern {
   readonly type = PatternType.CYCLONE;
@@ -42,22 +42,12 @@ export class Cyclone extends Pattern {
       }
 
       const pos = dot.getPosition();
-      const vel = dot.velocity;
 
-      if (pos.x < DOT_RADIUS) {
-        vel.x = Math.abs(vel.x);
-        dot.position.x = DOT_RADIUS;
-      } else if (pos.x > bounds.width - DOT_RADIUS) {
-        vel.x = -Math.abs(vel.x);
-        dot.position.x = bounds.width - DOT_RADIUS;
-      }
-
-      if (pos.y < DOT_RADIUS) {
-        vel.y = Math.abs(vel.y);
-        dot.position.y = DOT_RADIUS;
-      } else if (pos.y > bounds.height - DOT_RADIUS) {
-        vel.y = -Math.abs(vel.y);
-        dot.position.y = bounds.height - DOT_RADIUS;
+      // Remove dots that have flown off-screen
+      if (pos.x < -50 || pos.x > bounds.width + 50 ||
+          pos.y < -50 || pos.y > bounds.height + 50) {
+        this.dots.splice(i, 1);
+        continue;
       }
 
       dot.update(dt, bounds, _playerPosition);

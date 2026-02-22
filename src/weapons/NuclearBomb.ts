@@ -71,15 +71,17 @@ export class NuclearBomb extends Weapon {
       return false;
     }
 
+    const velocityMultiplier = 1.5;
+
     if (directness > 0.7) {
-      this.orbVelocity.x = playerVelocity.x;
-      this.orbVelocity.y = playerVelocity.y;
+      this.orbVelocity.x = playerVelocity.x * velocityMultiplier;
+      this.orbVelocity.y = playerVelocity.y * velocityMultiplier;
     } else {
       const forwardFactor = directness;
       const sidewaysFactor = 1 - directness;
 
-      this.orbVelocity.x = (nx * vDotN * forwardFactor + tx * vDotT * sidewaysFactor);
-      this.orbVelocity.y = (ny * vDotN * forwardFactor + ty * vDotT * sidewaysFactor);
+      this.orbVelocity.x = (nx * vDotN * forwardFactor + tx * vDotT * sidewaysFactor) * velocityMultiplier;
+      this.orbVelocity.y = (ny * vDotN * forwardFactor + ty * vDotT * sidewaysFactor) * velocityMultiplier;
     }
 
     return true;

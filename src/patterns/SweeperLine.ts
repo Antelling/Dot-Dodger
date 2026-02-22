@@ -123,6 +123,13 @@ export class SweeperLine extends Pattern {
     const lineLength = this.isHorizontal ? bounds.height : bounds.width;
     for (let i = 0; i < this.dots.length; i++) {
       const dot = this.dots[i];
+      
+      // Skip frozen dots - they should not move
+      if (dot.isFrozen()) {
+        dot.update(dt, bounds, _playerPosition);
+        continue;
+      }
+      
       const offset = this.dotOffsets[i];
 
       // Keep dots in formation - position them along the moving line

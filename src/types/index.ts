@@ -76,3 +76,9 @@ export interface Bounds {
   width: number;
   height: number;
 }
+
+export interface DeathEvent {
+  message: string;
+  type: 'dot' | 'nuclear_bomb' | 'electric_bomb';
+  timestamp: number;
+}

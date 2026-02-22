@@ -34,7 +34,7 @@ export class FlameBurst extends Weapon {
   private playerAngle: number = 0;
   private flames: FlameParticle[] = [];
   private trails: FireTrail[] = [];
-  private isActive: boolean = false;
+  private flameActive: boolean = false;
   private complete: boolean = false;
   
   activate(player: Player, _dots: Dot[]): void {
@@ -44,7 +44,7 @@ export class FlameBurst extends Weapon {
     this.playerAngle = player.directionAngle;
     this.flames = [];
     this.trails = [];
-    this.isActive = true;
+    this.flameActive = true;
     this.complete = false;
   }
   
@@ -54,7 +54,7 @@ export class FlameBurst extends Weapon {
     const elapsed = this.getElapsedTime();
     
     if (elapsed >= this.FLAME_DURATION_MS) {
-      this.isActive = false;
+      this.flameActive = false;
       const now = Date.now();
       this.trails = this.trails.filter(trail => now - trail.startTime < trail.duration);
       if (this.trails.length === 0) {
@@ -149,7 +149,7 @@ export class FlameBurst extends Weapon {
     
     this.renderTrails(ctx, now);
     
-    if (!this.isActive) return;
+    if (!this.flameActive) return;
     
     this.renderFlameCone(ctx);
     this.renderFlameParticles(ctx);

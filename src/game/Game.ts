@@ -1,4 +1,4 @@
-import { GameState, Bounds } from '../types';
+import { GameState, Bounds, type DeathEvent } from '../types';
 import { Renderer } from '../renderer/Renderer';
 import { InputManager } from './InputManager';
 import { Player } from '../entities/Player';
@@ -33,6 +33,7 @@ export class Game {
   private patternManager: PatternManager = new PatternManager();
   private orbSpawner: WeaponOrbSpawner = new WeaponOrbSpawner();
   private activeWeapons: Weapon[] = [];
+  private lastDeathEvent: DeathEvent | null = null;
   
   private menuElement: HTMLElement;
   private gameOverElement: HTMLElement;
@@ -125,6 +126,7 @@ export class Game {
   startGame(): void {
     this.state = GameState.PLAYING;
     this.timeAlive = 0;
+    this.lastDeathEvent = null;
 
     this.scoringSystem.start();
 
@@ -159,6 +161,11 @@ export class Game {
         .slice(0, 10)
         .map((h, i) => `<li>${i + 1}. ${h.score}</li>`)
         .join('');
+    }
+
+    const deathReasonElement = document.getElementById('death-reason');
+    if (deathReasonElement) {
+      deathReasonElement.textContent = this.lastDeathEvent?.message ?? 'Unknown';
     }
 
     const recentToastsList = document.getElementById('recent-toasts');
@@ -220,16 +227,29 @@ export class Game {
     this.collisionSystem.rebuildGrid(allDots);
 
     const orbs = this.orbSpawner.getOrbs();
+
+    // Update bounced weapon orb positions
+    for (const orb of orbs) {
+      orb.updatePosition(dt, this.bounds);
+    }
+
     const collidingOrb = this.collisionSystem.checkPlayerOrbCollision(this.player, orbs);
     if (collidingOrb) {
-      const weaponType = collidingOrb.getWeaponType();
-      const weapon = WeaponRegistry.create(weaponType);
-      if (weapon) {
-        weapon.activate(this.player, allDots);
-        this.activeWeapons.push(weapon);
-        collidingOrb.pickup();
-        this.orbSpawner.removeOrb(collidingOrb);
-        toastManager.show(`Picked up ${this.formatWeaponName(weaponType)}`, 'success');
+      // Try to bounce bounced weapons first
+      const playerVelocity = this.input.getVelocity();
+      const bounced = collidingOrb.bounce(playerVelocity, this.player.getPosition());
+
+      if (!bounced) {
+        // Not a bounced weapon or bounce failed - pick it up
+        const weaponType = collidingOrb.getWeaponType();
+        const weapon = WeaponRegistry.create(weaponType);
+        if (weapon) {
+          weapon.activate(this.player, allDots);
+          this.activeWeapons.push(weapon);
+          collidingOrb.pickup();
+          this.orbSpawner.removeOrb(collidingOrb);
+          toastManager.show(`Picked up ${this.formatWeaponName(weaponType)}`, 'success');
+        }
       }
     }
 
@@ -237,7 +257,30 @@ export class Game {
       const weapon = this.activeWeapons[i];
       weapon.update(dt, this.player, allDots, this.bounds);
       
+      // Check for player collision with active weapon (for bounceable weapons like Electric/Nuclear bomb)
+      if (weapon.isActive()) {
+        const playerPos = this.player.getPosition();
+        const weaponPos = weapon.getPosition();
+        const weaponRadius = weapon.getRadius();
+        const playerRadius = this.player.hitboxRadius;
+        
+        const dx = weaponPos.x - playerPos.x;
+        const dy = weaponPos.y - playerPos.y;
+        const distSq = dx * dx + dy * dy;
+        const radiiSum = weaponRadius + playerRadius;
+        
+        if (distSq < radiiSum * radiiSum) {
+          const playerVelocity = this.input.getVelocity();
+          weapon.handlePlayerCollision(this.player, playerVelocity);
+        }
+      }
+      
       if (weapon instanceof NuclearBomb && weapon.hasKilledPlayer()) {
+        this.lastDeathEvent = {
+          message: 'Killed by Nuclear Bomb explosion',
+          type: 'nuclear_bomb',
+          timestamp: Date.now()
+        };
         this.handleGameOver();
         return;
       }
@@ -251,6 +294,11 @@ export class Game {
     const collidingDot = this.collisionSystem.checkPlayerDotCollision(this.player);
     if (collidingDot) {
       if (collidingDot.isLethal()) {
+        this.lastDeathEvent = {
+          message: 'Hit by a red dot',
+          type: 'dot',
+          timestamp: Date.now()
+        };
         this.handleGameOver();
       } else if (collidingDot.isFrozen()) {
         collidingDot.kill();

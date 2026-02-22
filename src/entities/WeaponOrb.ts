@@ -15,6 +15,11 @@ export class WeaponOrb {
     WeaponType.ELECTRIC_BOMB
   ];
 
+  // Bounce physics state for bounced weapons
+  private velocity: Vector2 = { x: 0, y: 0 };
+  private lastBounceTime: number = 0;
+  private readonly bounceCooldown: number = 100;
+
   constructor(x: number, y: number, weaponType: WeaponType) {
     this.position = { x, y };
     this.weaponType = weaponType;
@@ -338,5 +343,84 @@ export class WeaponOrb {
 
   isActive(): boolean {
     return !this.pickedUp;
+  }
+
+
+  bounce(playerVelocity: Vector2, playerPosition: Vector2): boolean {
+    const now = Date.now();
+    if (now - this.lastBounceTime < this.bounceCooldown) {
+      return false;
+    }
+    this.lastBounceTime = now;
+
+    // Check if this is a bounced weapon
+    if (!WeaponOrb.BOUNCED_WEAPONS.includes(this.weaponType)) {
+      return false;
+    }
+
+    const dx = this.position.x - playerPosition.x;
+    const dy = this.position.y - playerPosition.y;
+    const distance = Math.sqrt(dx * dx + dy * dy);
+
+    if (distance === 0) {
+      this.velocity.x = playerVelocity.x;
+      this.velocity.y = playerVelocity.y;
+      return true;
+    }
+
+    // Collision normal (from player to orb center)
+    const nx = dx / distance;
+    const ny = dy / distance;
+
+    // Tangent vector (perpendicular to normal)
+    const tx = -ny;
+    const ty = nx;
+
+    // Decompose player velocity into normal and tangent components
+    const vDotN = playerVelocity.x * nx + playerVelocity.y * ny;
+    const vDotT = playerVelocity.x * tx + playerVelocity.y * ty;
+
+    // Transfer momentum: orb moves away based on collision angle
+    // - Normal component pushes orb away from player
+    // - Tangent component pushes orb sideways (creates the "nudge" effect)
+    const restitution = 0.8; // Energy transfer factor
+    const friction = 0.6;    // Tangential transfer factor
+
+    this.velocity.x = (nx * vDotN * restitution + tx * vDotT * friction);
+    this.velocity.y = (ny * vDotN * restitution + ty * vDotT * friction);
+
+    return true;
+  }
+
+  getVelocity(): Vector2 {
+    return this.velocity;
+  }
+
+  updatePosition(dt: number, bounds: { width: number; height: number }): void {
+    if (!WeaponOrb.BOUNCED_WEAPONS.includes(this.weaponType)) return;
+
+    this.position.x += this.velocity.x * dt;
+    this.position.y += this.velocity.y * dt;
+
+    const minX = this.radius;
+    const maxX = bounds.width - this.radius;
+    const minY = this.radius;
+    const maxY = bounds.height - this.radius;
+
+    if (this.position.x <= minX) {
+      this.velocity.x = Math.abs(this.velocity.x);
+      this.position.x = minX;
+    } else if (this.position.x >= maxX) {
+      this.velocity.x = -Math.abs(this.velocity.x);
+      this.position.x = maxX;
+    }
+
+    if (this.position.y <= minY) {
+      this.velocity.y = Math.abs(this.velocity.y);
+      this.position.y = minY;
+    } else if (this.position.y >= maxY) {
+      this.velocity.y = -Math.abs(this.velocity.y);
+      this.position.y = maxY;
+    }
   }
 }

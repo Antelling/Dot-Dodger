@@ -15,6 +15,27 @@ export abstract class Weapon {
   abstract update(dt: number, player: Player, dots: Dot[], bounds: Bounds): void;
   abstract render(renderer: Renderer): void;
 
+  // Handle collision with player (for bounceable weapons like Electric/Nuclear bomb)
+  // Returns true if collision was handled/bounced
+  handlePlayerCollision(_player: Player, _playerVelocity: { x: number; y: number }): boolean {
+    return false;
+  }
+
+  // Check if weapon is currently active (for collision detection)
+  isActive(): boolean {
+    return false;
+  }
+
+  // Get weapon position (for collision detection)
+  getPosition(): { x: number; y: number } {
+    return { x: 0, y: 0 };
+  }
+
+  // Get weapon radius (for collision detection)
+  getRadius(): number {
+    return 0;
+  }
+
   getDots(): Dot[] {
     return this.dots.filter(d => !d.isDead());
   }
