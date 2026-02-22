@@ -58,7 +58,7 @@ tiltToPersist/
 │   │   └── FlameBurst.ts
 │   └── utils/
 │       └── constants.ts   # Game constants
-└── built/                 # Built files (generated)
+└── docs/                  # Built files (generated) - GitHub Pages serves from here
 ```
 
 ## Key Features
@@ -107,7 +107,7 @@ npm run build
 
 **⚠️ MANDATORY: After ANY code changes to the git repo, you MUST deploy to the nginx server so the user can test the changes.**
 
-The game is served from `/var/www/html/dot-dodger/` via nginx. Built files in `built/` are NOT automatically served - you must explicitly copy them.
+The game is served from `/var/www/html/dot-dodger/` via nginx. Built files in `docs/` are NOT automatically served - you must explicitly copy them.
 
 ```bash
 # 1. Build first
@@ -115,10 +115,10 @@ npm run build
 
 # 2. Deploy to nginx serve directory (REQUIRED - do not skip this step)
 mkdir -p /var/www/html/dot-dodger
-cp -r built/* /var/www/html/dot-dodger/
+cp -r docs/* /var/www/html/dot-dodger/
 ```
 
-**Never assume the user can test from `built/` directly. Always deploy to `/var/www/html/dot-dodger/` after making changes.**
+**Never assume the user can test from `docs/` directly. Always deploy to `/var/www/html/dot-dodger/` after making changes.**
 
 ## Game Constants
 

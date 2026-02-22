@@ -4,7 +4,7 @@ export default defineConfig({
   base: './',
   build: {
     target: 'esnext',
-    outDir: 'built',
+    outDir: 'docs',
     sourcemap: true
   },
   server: {
