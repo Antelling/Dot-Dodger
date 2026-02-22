@@ -154,7 +154,7 @@ export class Dot {
   }
 
   freeze(): void {
-    if (this.state === DotState.ACTIVE) {
+    if (this.state === DotState.ACTIVE || this.state === DotState.SPAWNING) {
       this.state = DotState.FROZEN;
       this.velocity.x = 0;
       this.velocity.y = 0;

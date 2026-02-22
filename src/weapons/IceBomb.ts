@@ -35,15 +35,15 @@ export class IceBomb extends Weapon {
     this.state = 'EXPLODING';
   }
 
-  update(_dt: number, _player: Player, _dots: Dot[], bounds: Bounds): void {
+  update(_dt: number, _player: Player, dots: Dot[], bounds: Bounds): void {
     if (!this.bounds) {
       this.bounds = bounds;
       this.explosionRadius = 0.3 * bounds.width;
-      
-      // Re-freeze dots now that we have proper bounds
-      if (this.frozenDotsCount === 0) {
-        this.freezeDotsInRadius(this.dots);
-      }
+    }
+
+    // Continuously freeze dots that enter the radius while effect is active
+    if (this.state === 'EXPLODING' || this.state === 'FADING') {
+      this.freezeDotsInRadius(dots);
     }
 
     if (this.state === 'EXPLODING') {
@@ -89,7 +89,7 @@ export class IceBomb extends Weapon {
     if (!dots || dots.length === 0) return;
 
     for (const dot of dots) {
-      if (dot.state === DotState.SPAWNING || dot.isDead() || dot.isFrozen()) {
+      if (dot.isDead() || dot.isFrozen()) {
         continue;
       }
 
