@@ -1,4 +1,4 @@
-import { Vector2, Bounds, DotState } from '../types';
+import { Vector2, Bounds, DotState, PatternType } from '../types';
 import { Renderer } from '../renderer/Renderer';
 import { Vec2, wrapInPlace } from '../utils/math';
 import { DOT_RADIUS, DOT_SPAWN_ANIMATION_DURATION, DOT_SPAWN_SCALE_MAX, COLOR_DOT, COLOR_DOT_SPAWNING, COLOR_DOT_FROZEN } from '../utils/constants';
@@ -21,7 +21,7 @@ export class Dot {
   
   // Frozen/thaw properties
   private frozenTime: number = 0;
-  private readonly thawDuration: number = 3000; // 3 seconds
+  private readonly thawDuration: number = 6000; // 6 seconds (doubled)
   private readonly preThawWarningTime: number = 500; // Start vibrating 500ms before thaw
   private isZombie: boolean = false;
   private readonly zombieSpeed: number = 50;
@@ -90,7 +90,10 @@ export class Dot {
     this.position.x += this.velocity.x * dt;
     this.position.y += this.velocity.y * dt;
     
-    wrapInPlace(this.position, bounds);
+    // Don't wrap Cyclone dots - let them fly off-screen
+    if (this.patternId !== PatternType.CYCLONE) {
+      wrapInPlace(this.position, bounds);
+    }
   }
 
   render(renderer: Renderer): void {

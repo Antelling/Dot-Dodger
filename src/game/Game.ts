@@ -11,7 +11,7 @@ import { WeaponRegistry } from '../weapons/WeaponRegistry';
 import type { Weapon } from '../weapons/Weapon';
 import { NuclearBomb } from '../weapons/NuclearBomb';
 import { COLOR_BACKGROUND, FRAME_TIME } from '../utils/constants';
-import { getHighscores } from '../utils/storage';
+import { getHighscores, addHighscore } from '../utils/storage';
 import { toastManager } from './ToastManager';
 
 export class Game {
@@ -42,6 +42,7 @@ export class Game {
   private playAgainBtn: HTMLElement;
   private enableMotionBtn: HTMLElement;
   private finalScoreElement: HTMLElement;
+  private newHighscoreElement: HTMLElement;
   
   constructor() {
     this.renderer = new Renderer('game');
@@ -56,10 +57,12 @@ export class Game {
     this.playAgainBtn = document.getElementById('play-again-btn')!;
     this.enableMotionBtn = document.getElementById('enable-motion-btn')!;
     this.finalScoreElement = document.getElementById('final-score')!;
+    this.newHighscoreElement = document.getElementById('new-highscore')!;
     
     this.setupEventListeners();
     this.checkPlatform();
     this.gameLoop(0);
+    this.displayMenuHighscores();
   }
   
   private checkPlatform(): void {
@@ -82,6 +85,21 @@ export class Game {
   private showElement(id: string, show: boolean): void {
     const el = document.getElementById(id);
     if (el) el.style.display = show ? 'flex' : 'none';
+  }
+
+  private displayMenuHighscores(): void {
+    const menuHighscoreList = document.getElementById('menu-highscores');
+    if (menuHighscoreList) {
+      const highscores = getHighscores();
+      if (highscores.length === 0) {
+        menuHighscoreList.innerHTML = '<li style="color: #666;">No scores yet</li>';
+      } else {
+        menuHighscoreList.innerHTML = highscores
+          .slice(0, 10)
+          .map((h, i) => `<li>${i + 1}. ${h.score}</li>`)
+          .join('');
+      }
+    }
   }
   
   private setupEventListeners(): void {
@@ -154,12 +172,29 @@ export class Game {
 
     this.finalScoreElement.textContent = `Score: ${finalScore}`;
 
+    // Save highscore and check if it's a new high score
+    const rank = addHighscore(finalScore);
+    const isNewHighscore = rank > 0 && rank <= 3;
+    
+    // Show "New High Score!" message if applicable
+    if (isNewHighscore) {
+      this.newHighscoreElement.textContent = rank === 1 ? 'New #1 High Score!' : `New #${rank} High Score!`;
+      this.newHighscoreElement.style.display = 'block';
+    } else {
+      this.newHighscoreElement.style.display = 'none';
+    }
+
+    // Display highscores on death screen
     const highscoreList = document.getElementById('gameover-highscores');
     if (highscoreList) {
       const highscores = getHighscores();
       highscoreList.innerHTML = highscores
         .slice(0, 10)
-        .map((h, i) => `<li>${i + 1}. ${h.score}</li>`)
+        .map((h, i) => {
+          const isCurrentScore = rank > 0 && i + 1 === rank;
+          const style = isCurrentScore ? ' style="color: #FFD700; font-weight: bold;"' : '';
+          return `<li${style}>${i + 1}. ${h.score}</li>`;
+        })
         .join('');
     }
 
@@ -221,9 +256,17 @@ export class Game {
 
     this.patternManager.update(dt, this.player.getPosition(), this.bounds);
 
+    // If no dots and no pattern is actively spawning, throw in a new pattern
+    const allDots = this.patternManager.getAllDots();
+    if (allDots.length === 0 && !this.patternManager.isAnyPatternActivelySpawning()) {
+      const nextType = this.patternManager.selectNextPattern();
+      if (nextType) {
+        this.patternManager.spawnPattern(nextType, this.player.getPosition(), this.bounds);
+      }
+    }
+
     this.orbSpawner.update(this.bounds, this.player.getPosition());
 
-    const allDots = this.patternManager.getAllDots();
     this.collisionSystem.rebuildGrid(allDots);
 
     const orbs = this.orbSpawner.getOrbs();

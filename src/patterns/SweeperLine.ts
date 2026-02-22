@@ -130,6 +130,12 @@ export class SweeperLine extends Pattern {
         continue;
       }
       
+      // During spawn animation, keep dot at its initial position
+      if (!dot.isLethal()) {
+        dot.update(dt, bounds, _playerPosition);
+        continue;
+      }
+      
       const offset = this.dotOffsets[i];
 
       // Keep dots in formation - position them along the moving line

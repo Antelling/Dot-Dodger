@@ -77,4 +77,8 @@ export class ZombieSnow extends Pattern {
   isComplete(): boolean {
     return this.elapsedMs > this.duration && this.getDots().length === 0;
   }
+
+  isActivelySpawning(): boolean {
+    return this.elapsedMs <= this.duration;
+  }
 }

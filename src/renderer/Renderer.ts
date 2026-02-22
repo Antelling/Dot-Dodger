@@ -22,7 +22,8 @@ export class Renderer {
   private outlineBatches: Map<string, CircleOutlineBatch[]> = new Map();
 
   private static readonly TWO_PI = Math.PI * 2;
-  private static readonly SCALE = 1.3;
+  private scale: number = 1.3;
+  private onScaleChange?: () => void;
 
   constructor(canvasId: string = 'game') {
     const canvas = document.getElementById(canvasId) as HTMLCanvasElement;
@@ -56,14 +57,29 @@ export class Renderer {
   }
 
   getBounds(): { width: number; height: number } {
-    return { width: this.width / Renderer.SCALE, height: this.height / Renderer.SCALE };
+    return { width: this.width / this.scale, height: this.height / this.scale };
+  }
+
+  setScale(scale: number): void {
+    this.scale = scale;
+    if (this.onScaleChange) {
+      this.onScaleChange();
+    }
+  }
+
+  getScale(): number {
+    return this.scale;
+  }
+
+  onScaleChangeCallback(callback: () => void): void {
+    this.onScaleChange = callback;
   }
 
   clear(color: string = '#000000'): void {
     this.ctx.fillStyle = color;
     this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
     this.ctx.save();
-    this.ctx.scale(this.dpr * Renderer.SCALE, this.dpr * Renderer.SCALE);
+    this.ctx.scale(this.dpr * this.scale, this.dpr * this.scale);
   }
 
   endFrame(): void {

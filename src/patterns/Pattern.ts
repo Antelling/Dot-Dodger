@@ -40,6 +40,14 @@ export abstract class Pattern {
     return false;
   }
 
+  /**
+   * Returns true if the pattern is still actively spawning dots.
+   * Override in subclasses that spawn dots over time.
+   */
+  isActivelySpawning(): boolean {
+    return false;
+  }
+
   start(): void {
     this.elapsedMs = 0;
     this.isStarted = true;

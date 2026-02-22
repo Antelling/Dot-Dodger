@@ -27,7 +27,7 @@ export class KineticBomb extends Weapon {
       case 'COLLAPSING':
         if (elapsedTime >= 100) {
           this.state = 'EXPLODING';
-          this.explosionRadius = 0.25 * bounds.width;
+          this.explosionRadius = 0.45 * bounds.width;
         }
         break;
 

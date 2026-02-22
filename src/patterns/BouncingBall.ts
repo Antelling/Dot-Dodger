@@ -118,8 +118,25 @@ export class BouncingBall extends Pattern {
       const offset = this.dotOffsets[i];
 
       if (offset && !dot.isDead()) {
-        dot.position.x = this.centerPosition.x + offset.x;
-        dot.position.y = this.centerPosition.y + offset.y;
+        // Calculate where the dot should be (expected position)
+        const expectedX = this.centerPosition.x + offset.x;
+        const expectedY = this.centerPosition.y + offset.y;
+        
+        // Calculate displacement caused by external forces (like DotRepellent)
+        const displacementX = dot.position.x - expectedX;
+        const displacementY = dot.position.y - expectedY;
+        
+        // Apply displacement to center position (allows DotRepellent to push the ball)
+        this.centerPosition.x += displacementX;
+        this.centerPosition.y += displacementY;
+        
+        // Re-calculate expected position after center displacement
+        const newExpectedX = this.centerPosition.x + offset.x;
+        const newExpectedY = this.centerPosition.y + offset.y;
+        
+        // Set dot to its proper relative position in the formation
+        dot.position.x = newExpectedX;
+        dot.position.y = newExpectedY;
         dot.velocity.x = this.centerVelocity.x;
         dot.velocity.y = this.centerVelocity.y;
       }

@@ -78,6 +78,15 @@ export class PatternManager {
     return this.allDotsCache;
   }
 
+  isAnyPatternActivelySpawning(): boolean {
+    for (let i = 0; i < this.activePatterns.length; i++) {
+      if (this.activePatterns[i].isActivelySpawning()) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   private rebuildDotsCache(): void {
     this.allDotsCache.length = 0;
     for (let i = 0; i < this.activePatterns.length; i++) {
@@ -152,8 +161,7 @@ export class PatternManager {
       case Difficulty.EASY:
         return this.currentScore < SCORE_THRESHOLDS.EASY_MAX;
       case Difficulty.MEDIUM:
-        return this.currentScore >= SCORE_THRESHOLDS.EASY_MAX && 
-               this.currentScore < SCORE_THRESHOLDS.MEDIUM_MAX;
+        return this.currentScore >= SCORE_THRESHOLDS.EASY_MAX;
       case Difficulty.HARD:
         return this.currentScore >= SCORE_THRESHOLDS.MEDIUM_MAX;
       default:

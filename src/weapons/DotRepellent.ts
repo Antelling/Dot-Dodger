@@ -25,7 +25,7 @@ export class DotRepellent extends Weapon {
     this.playerPosition = player.getPosition();
 
     for (const dot of dots) {
-      if (!dot.isLethal()) continue;
+      if (dot.isDead()) continue;
 
       const dotPos = dot.getPosition();
       const dx = dotPos.x - this.playerPosition.x;

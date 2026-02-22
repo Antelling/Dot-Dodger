@@ -1,7 +1,6 @@
 import { Weapon } from './Weapon';
 import type { Player } from '../entities/Player';
 import { Dot } from '../entities/Dot';
-import { DotState } from '../types';
 import { WeaponType, Bounds } from '../types';
 import type { Renderer } from '../renderer/Renderer';
 
@@ -53,8 +52,8 @@ export class IceBomb extends Weapon {
       }
     } else if (this.state === 'FADING') {
       const elapsed = Date.now() - this.explosionStartTime;
-      // Effect lasts 3000ms to match dot freeze duration
-      if (elapsed >= 3000) {
+      // Effect lasts 6000ms to match dot freeze duration (doubled)
+      if (elapsed >= 6000) {
         this.state = 'COMPLETE';
       }
     }
@@ -66,8 +65,8 @@ export class IceBomb extends Weapon {
       let alpha = 0.6;
       
       if (this.state === 'FADING') {
-        // Fade out over 2500ms (from 500ms to 3000ms)
-        alpha = 0.6 * (1 - (elapsed - 500) / 2500);
+        // Fade out over 5500ms (from 500ms to 6000ms)
+        alpha = 0.6 * (1 - (elapsed - 500) / 5500);
       }
       
       if (alpha > 0) {
@@ -98,7 +97,7 @@ export class IceBomb extends Weapon {
       const dy = pos.y - this.explosionCenter.y;
       const distance = Math.sqrt(dx * dx + dy * dy);
 
-      if (distance < this.explosionRadius) {
+      if (distance <= this.explosionRadius) {
         dot.freeze();
         this.frozenDotsCount++;
       }

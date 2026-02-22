@@ -80,7 +80,7 @@ export class HomingMissile extends Weapon {
     let bestScore = Infinity;
 
     for (const dot of dots) {
-      if (dot.isDead() || !dot.isLethal()) continue;
+      if (dot.isDead()) continue;
 
       const dotPos = dot.getPosition();
       const dist = distance(missile, dotPos);
@@ -134,7 +134,7 @@ export class HomingMissile extends Weapon {
     if (explosion.hasAppliedDamage) return;
 
     for (const dot of dots) {
-      if (dot.isDead() || !dot.isLethal()) continue;
+      if (dot.isDead()) continue;
 
       const dotPos = dot.getPosition();
       const dist = distance({ x: explosion.x, y: explosion.y }, dotPos);
@@ -167,7 +167,7 @@ export class HomingMissile extends Weapon {
     for (const missile of this.missiles) {
       if (!missile.active) continue;
 
-      if (!missile.target || missile.target.isDead() || !missile.target.isLethal()) {
+      if (!missile.target || missile.target.isDead()) {
         missile.target = this.findBestTarget(missile, dots);
       }
 
@@ -202,7 +202,7 @@ export class HomingMissile extends Weapon {
       }
 
       for (const dot of dots) {
-        if (dot.isDead() || !dot.isLethal()) continue;
+        if (dot.isDead()) continue;
 
         const dotPos = dot.getPosition();
         const dist = distance(missile, dotPos);

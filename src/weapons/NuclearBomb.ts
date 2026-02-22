@@ -137,7 +137,7 @@ export class NuclearBomb extends Weapon {
         if (elapsedTime >= this.fuseTime || this.collisionCount >= 3) {
           this.state = 'EXPLODING';
           this.explosionStartTime = Date.now();
-          this.explosionRadius = 0.35 * bounds.width;
+          this.explosionRadius = 0.55 * bounds.width;
           toastManager.show('Nuclear Bomb detonated!', 'warning');
           this.killDotsInExplosion(dots);
           this.checkAndKillPlayer(player);
@@ -166,7 +166,7 @@ export class NuclearBomb extends Weapon {
         const progress = Math.min(elapsedTime / this.fuseTime, 1);
         const color = this.interpolateColor('#FF6600', '#FF0000', progress);
 
-        const warningExplosionRadius = 0.35 * this.bounds.width;
+        const warningExplosionRadius = 0.55 * this.bounds.width;
 
         const ctx = renderer.getContext();
 

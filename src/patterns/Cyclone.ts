@@ -55,16 +55,22 @@ export class Cyclone extends Pattern {
   }
 
   private spawnDots(bounds: Bounds): void {
-    const centerX = bounds.width / 2;
-    const centerY = bounds.height / 2;
+    // Randomly pick one of the four corners
+    const corners = [
+      { x: bounds.width * 0.15, y: bounds.height * 0.15 },      // Top-left
+      { x: bounds.width * 0.85, y: bounds.height * 0.15 },      // Top-right
+      { x: bounds.width * 0.15, y: bounds.height * 0.85 },      // Bottom-left
+      { x: bounds.width * 0.85, y: bounds.height * 0.85 },      // Bottom-right
+    ];
+    const corner = corners[Math.floor(Math.random() * corners.length)];
     const dotCount = 150;
 
     for (let i = 0; i < dotCount; i++) {
       const angle = (i / dotCount) * Math.PI * 2;
       const offsetAngle = angle + (Math.random() - 0.5) * 0.2;
       const radius = this.circleRadius * (0.8 + Math.random() * 0.4);
-      const x = centerX + Math.cos(offsetAngle) * radius;
-      const y = centerY + Math.sin(offsetAngle) * radius;
+      const x = corner.x + Math.cos(offsetAngle) * radius;
+      const y = corner.y + Math.sin(offsetAngle) * radius;
 
       const velAngle = offsetAngle + Math.PI / 2 + (Math.random() - 0.5) * 0.5;
       const speed = this.dotSpeed * (0.5 + Math.random() * 1);

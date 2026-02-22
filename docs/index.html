@@ -27,13 +27,19 @@
 .recent-toasts-list li.toast-warning { color: #FFE4B5; border-color: #FFD700; }
 .recent-toasts-list li.toast-error { color: #FFB6C1; border-color: #FF4444; }
 .recent-toasts-list li.toast-info { color: #E0E0E0; border-color: #888888; }
+    .scale-control { display: flex; flex-direction: column; align-items: center; margin: 20px 0; padding: 15px 25px; background: rgba(0, 255, 0, 0.1); border: 1px solid #00FF00; border-radius: 8px; }
+    .scale-control label { color: #00FF00; font-size: 16px; margin-bottom: 10px; font-weight: bold; }
+    .scale-control input[type="range"] { width: 200px; height: 8px; background: #333; border-radius: 4px; outline: none; -webkit-appearance: none; appearance: none; }
+    .scale-control input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 20px; height: 20px; background: #00FF00; border-radius: 50%; cursor: pointer; box-shadow: 0 0 10px #00FF00; }
+    .scale-control input[type="range"]::-moz-range-thumb { width: 20px; height: 20px; background: #00FF00; border-radius: 50%; cursor: pointer; border: none; box-shadow: 0 0 10px #00FF00; }
+    .scale-control #scale-value { color: #00FF00; font-size: 18px; margin-top: 8px; font-weight: bold; text-shadow: 0 0 5px #00FF00; }
     #desktop-warning { display: none; }
     @media (pointer: fine) { #desktop-warning { display: flex; } #menu, #game-over, #permission-prompt, #landscape-warning { display: none !important; } }
     #landscape-warning { display: none; }
     @media (orientation: landscape) and (max-height: 500px) { #landscape-warning { display: flex; } #menu, #game-over, #permission-prompt, #desktop-warning { display: none !important; } }
     #permission-prompt { display: none; }
   </style>
-  <script type="module" crossorigin src="./assets/index-OU0Qonlx.js"></script>
+  <script type="module" crossorigin src="./assets/index-QSxojIDE.js"></script>
 </head>
 <body>
   <div id="app">
@@ -54,6 +60,11 @@
     <div id="menu" class="ui-overlay">
       <h1 class="menu-title">Dot Dodger</h1>
       <button id="new-game-btn" type="button" class="btn">New Game</button>
+      <div class="scale-control">
+        <label for="game-scale-slider">Game Scale</label>
+        <input type="range" id="game-scale-slider" min="80" max="150" value="130" step="5">
+        <span id="scale-value">130%</span>
+      </div>
       <h2 class="highscore-title">High Scores</h2>
       <ol id="menu-highscores" class="highscore-list"></ol>
     </div>
