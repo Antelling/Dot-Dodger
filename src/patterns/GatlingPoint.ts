@@ -15,8 +15,17 @@ export class GatlingPoint extends Pattern {
   private elapsedSinceSpawn: number = 0;
   private spawnPoint: Vector2 = { x: 0, y: 0 };
   private spawnPointDot: Dot | null = null;
-  private readonly spawnPointRadius: number = DOT_RADIUS * 2.5;
+  private readonly spawnPointRadius: number = DOT_RADIUS;
   private spawnPointDead: boolean = false;
+  private cooldownDuration: number = 5000; // 5 seconds between bursts
+  private cooldownElapsed: number = 0;
+  private isShooting: boolean = false; // Start in spawn animation, then shooting mode
+  private shootingElapsed: number = 0;
+  private masterSpawnDuration: number = 1500; // 1.5 second spawn animation for master dot
+  private masterSpawnElapsed: number = 0;
+  private shotsFired: number = 0;
+  private readonly slowShotCount: number = 5; // First 5 shots are slower
+  private readonly slowShotSpeedMultiplier: number = 0.5; // Half speed for slow shots
 
   constructor(difficulty: Difficulty = Difficulty.MEDIUM) {
     super();
@@ -42,7 +51,7 @@ export class GatlingPoint extends Pattern {
     this.spawnPoint = randomPosition(_bounds, margin);
     
     this.spawnPointDot = new Dot(this.spawnPoint.x, this.spawnPoint.y, this.type);
-    this.spawnPointDot.state = DotState.ACTIVE;
+    // Master dot starts in SPAWNING state - will become ACTIVE after animation
     // Use Object.defineProperty to override the readonly radius for the spawn point
     Object.defineProperty(this.spawnPointDot, 'radius', {
       value: this.spawnPointRadius,
@@ -58,12 +67,10 @@ export class GatlingPoint extends Pattern {
         this.spawnPointDead = true;
       } else if (this.spawnPointDot.isFrozen()) {
         // Spawn point frozen - stop spawning
-      } else if (this.elapsedMs <= this.shootDuration) {
-        this.elapsedSinceSpawn += dt * 1000;
-        if (this.elapsedSinceSpawn >= this.shootInterval) {
-          this.elapsedSinceSpawn = 0;
-          this.spawnDotAtPoint(playerPosition);
-        }
+      } else {
+        // Update master dot spawn animation first
+        this.updateMasterSpawnAnimation(dt);
+        this.updateShootingLogic(dt, playerPosition);
       }
     }
 
@@ -83,14 +90,69 @@ export class GatlingPoint extends Pattern {
         continue;
       }
 
-      if (pos.x < DOT_RADIUS || pos.x > bounds.width - DOT_RADIUS) {
+      const radius = dot.radius;
+
+      // Bounce off walls - only reverse velocity when moving toward the wall
+      // and clamp position to prevent getting stuck
+      if (pos.x <= radius && vel.x < 0) {
         vel.x = -vel.x * 0.5;
+        pos.x = radius + 1;
+      } else if (pos.x >= bounds.width - radius && vel.x > 0) {
+        vel.x = -vel.x * 0.5;
+        pos.x = bounds.width - radius - 1;
       }
-      if (pos.y < DOT_RADIUS || pos.y > bounds.height - DOT_RADIUS) {
+      
+      if (pos.y <= radius && vel.y < 0) {
         vel.y = -vel.y * 0.5;
+        pos.y = radius + 1;
+      } else if (pos.y >= bounds.height - radius && vel.y > 0) {
+        vel.y = -vel.y * 0.5;
+        pos.y = bounds.height - radius - 1;
       }
 
       dot.update(dt, bounds, playerPosition);
+    }
+  }
+
+  private updateMasterSpawnAnimation(dt: number): void {
+    if (this.spawnPointDot && this.spawnPointDot.state === DotState.SPAWNING) {
+      this.masterSpawnElapsed += dt * 1000;
+      // Update the dot's internal spawn animation
+      this.spawnPointDot.update(dt, { width: 0, height: 0 });
+      
+      if (this.masterSpawnElapsed >= this.masterSpawnDuration) {
+        this.spawnPointDot.state = DotState.ACTIVE;
+        this.isShooting = true;
+      }
+    }
+  }
+
+  private updateShootingLogic(dt: number, playerPosition: Vector2): void {
+    if (this.isShooting) {
+      // Shooting phase
+      this.shootingElapsed += dt * 1000;
+      this.elapsedSinceSpawn += dt * 1000;
+      
+      if (this.elapsedSinceSpawn >= this.shootInterval) {
+        this.elapsedSinceSpawn = 0;
+        this.spawnDotAtPoint(playerPosition);
+      }
+      
+      // Check if shooting phase is done
+      if (this.shootingElapsed >= this.shootDuration) {
+        this.isShooting = false;
+        this.cooldownElapsed = 0;
+      }
+    } else {
+      // Cooldown phase - wait 5 seconds
+      this.cooldownElapsed += dt * 1000;
+      
+      if (this.cooldownElapsed >= this.cooldownDuration) {
+        // Start shooting again
+        this.isShooting = true;
+        this.shootingElapsed = 0;
+        this.elapsedSinceSpawn = 0;
+      }
     }
   }
 
@@ -100,27 +162,38 @@ export class GatlingPoint extends Pattern {
     const dist = Math.sqrt(dx * dx + dy * dy);
 
     if (dist > 0) {
-      this.spawnDot(this.spawnPoint.x, this.spawnPoint.y, {
-        x: (dx / dist) * this.dotSpeed,
-        y: (dy / dist) * this.dotSpeed
+      // Calculate speed - first few shots are slower
+      let speed = this.dotSpeed;
+      if (this.shotsFired < this.slowShotCount) {
+        speed = this.dotSpeed * this.slowShotSpeedMultiplier;
+      }
+      this.shotsFired++;
+
+      const dot = this.spawnDot(this.spawnPoint.x, this.spawnPoint.y, {
+        x: (dx / dist) * speed,
+        y: (dy / dist) * speed
       });
+      // Skip spawn animation - make instantly active and lethal
+      dot.skipSpawnAnimation();
     } else {
       this.spawnDot(this.spawnPoint.x, this.spawnPoint.y);
     }
   }
 
   isComplete(): boolean {
+    // Pattern is complete when master point is killed or frozen and all dots are gone
     if (this.spawnPointDead || (this.spawnPointDot && this.spawnPointDot.isFrozen())) {
       return this.getDots().length === 0;
     }
-    return this.elapsedMs > this.shootDuration && this.getDots().length === 0;
+    // Master point is still alive - pattern never completes until killed
+    return false;
   }
 
   isActivelySpawning(): boolean {
     if (this.spawnPointDead || (this.spawnPointDot && this.spawnPointDot.isFrozen())) {
       return false;
     }
-    return this.elapsedMs <= this.shootDuration;
+    return this.isShooting;
   }
 
   getSpawnPointDot(): Dot | null {

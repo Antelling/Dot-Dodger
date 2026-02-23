@@ -12,7 +12,8 @@ export class WeaponOrb {
   // Weapons that bounce when collided with
   private static readonly BOUNCED_WEAPONS: WeaponType[] = [
     WeaponType.NUCLEAR_BOMB,
-    WeaponType.ELECTRIC_BOMB
+    WeaponType.ELECTRIC_BOMB,
+    WeaponType.FIREBALL_ORB
   ];
 
   // Bounce physics state for bounced weapons
@@ -84,6 +85,15 @@ export class WeaponOrb {
         break;
       case WeaponType.FLAME_BURST:
         this.drawFlameBurstIcon(ctx, x, y, iconScale);
+        break;
+      case WeaponType.TRIPLE_CANNON:
+        this.drawTripleCannonIcon(ctx, x, y, iconScale);
+        break;
+      case WeaponType.FIREBALL_ORB:
+        this.drawFireballOrbIcon(ctx, x, y, iconScale);
+        break;
+      case WeaponType.TESLA_CANNON:
+        this.drawTeslaCannonIcon(ctx, x, y, iconScale);
         break;
     }
   }
@@ -319,6 +329,62 @@ export class WeaponOrb {
       x, y - scale * 0.4
     );
     ctx.fill();
+  }
+  private drawTripleCannonIcon(ctx: CanvasRenderingContext2D, x: number, y: number, scale: number): void {
+    const bulletRadius = scale * 0.2;
+    const spacing = scale * 0.5;
+
+    for (let i = -1; i <= 1; i++) {
+      const bulletX = x + i * spacing;
+      ctx.beginPath();
+      ctx.arc(bulletX, y, bulletRadius, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  private drawFireballOrbIcon(ctx: CanvasRenderingContext2D, x: number, y: number, scale: number): void {
+    ctx.beginPath();
+    ctx.arc(x, y, scale * 0.4, 0, Math.PI * 2);
+    ctx.fill();
+
+    const flames = 5;
+    for (let i = 0; i < flames; i++) {
+      const angle = (i / flames) * Math.PI * 2 - Math.PI / 2;
+      const flameLen = scale * (0.5 + (i % 2) * 0.2);
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+      ctx.quadraticCurveTo(
+        x + Math.cos(angle - 0.2) * flameLen * 0.5,
+        y + Math.sin(angle - 0.2) * flameLen * 0.5,
+        x + Math.cos(angle) * flameLen,
+        y + Math.sin(angle) * flameLen
+      );
+      ctx.quadraticCurveTo(
+        x + Math.cos(angle + 0.2) * flameLen * 0.5,
+        y + Math.sin(angle + 0.2) * flameLen * 0.5,
+        x, y
+      );
+      ctx.fill();
+    }
+  }
+
+  private drawTeslaCannonIcon(ctx: CanvasRenderingContext2D, x: number, y: number, scale: number): void {
+    const bulletRadius = scale * 0.15;
+    const spacing = scale * 0.4;
+
+    for (let i = -1; i <= 1; i++) {
+      const bulletX = x + i * spacing;
+      ctx.beginPath();
+      ctx.arc(bulletX, y, bulletRadius, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    ctx.strokeStyle = '#FFFFFF';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(x, y + scale * 0.4);
+    ctx.lineTo(x, y + scale * 0.8);
+    ctx.stroke();
   }
 
   isCollidingWith(playerPosition: Vector2, playerRadius: number): boolean {

@@ -77,7 +77,10 @@ export class WeaponOrbSpawner {
       WeaponType.ELECTRIC_BOMB,
       WeaponType.DOT_REPELLENT,
       WeaponType.CHAINSAW,
-      WeaponType.FLAME_BURST
+      WeaponType.FLAME_BURST,
+      WeaponType.TRIPLE_CANNON,
+      WeaponType.FIREBALL_ORB,
+      WeaponType.TESLA_CANNON
     ];
     return types[Math.floor(Math.random() * types.length)];
   }

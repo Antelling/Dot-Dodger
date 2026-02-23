@@ -17,6 +17,11 @@ export class Blaster extends Weapon {
   private playerAngle: number = 0;
   private beamOriginPosition: Vector2 = { x: 0, y: 0 };
 
+  // Beam dimensions - must match visual rendering exactly
+  private readonly BEAM_WIDTH = 10;  // Visual width, perpendicular to beam direction
+  private readonly BEAM_LENGTH = 150;
+  private readonly BEAM_SPEED = 600;
+
   activate(player: Player, dots: Dot[]): void {
     this.start();
     this.dots = dots;
@@ -45,10 +50,11 @@ export class Blaster extends Weapon {
       }
     } else if (this.state === 'FIRING') {
       this.prevBeamPosition = this.beamPosition;
-      this.beamPosition += 500 * dt;
+      this.beamPosition += this.BEAM_SPEED * dt;
       this.checkBeamCollision(dots);
-      
-      if (this.beamPosition > Math.max(bounds.width, bounds.height)) {
+      // Continue beam well past screen edge for better visibility
+      const maxDistance = Math.max(bounds.width, bounds.height) * 1.5;
+      if (this.beamPosition > maxDistance) {
         this.state = 'COMPLETE';
       }
     }
@@ -56,34 +62,38 @@ export class Blaster extends Weapon {
 
   checkBeamCollision(dots: Dot[]): void {
     if (!dots || dots.length === 0) return;
-
     const cos = Math.cos(this.beamAngle);
     const sin = Math.sin(this.beamAngle);
-
+    // Beam dimensions match visual exactly, small tolerance for dot radius
+    const halfWidth = this.BEAM_WIDTH / 2 + 2;  // 7px half-width
+    const halfLength = this.BEAM_LENGTH / 2 + 2;  // 77px half-length
     for (const dot of dots) {
       if (!dot.isDead()) {
         const dotPos = dot.getPosition();
         const dotRadius = dot.getRadius();
-
+        // Transform dot position to beam-local coordinates
+        // In rotated frame where beam is drawn:
+        //   localX = distance along beam sweep direction (beam is 10px long in this axis)
+        //   localY = distance perpendicular to beam (beam is 150px wide in this axis)
         const dx = dotPos.x - this.beamOriginPosition.x;
         const dy = dotPos.y - this.beamOriginPosition.y;
+        const localX = dx * cos + dy * sin;  // along beam sweep direction
+        const localY = -dx * sin + dy * cos; // perpendicular to beam (width)
 
-        const localX = dx * cos + dy * sin;
-        const localY = dx * sin - dy * cos;
+        // Check if dot is within beam width (perpendicular) - 150px wide
+        if (Math.abs(localY) > halfLength + dotRadius) continue;
 
-        const halfWidth = 50 + dotRadius;
-        const halfLength = 100 + dotRadius;
+        // The beam sweeps along localX, centered at beamPosition, extending ±halfWidth (5px)
+        const beamFront = this.beamPosition + halfWidth;
+        const beamBack = this.beamPosition - halfWidth;
+        const prevBeamFront = this.prevBeamPosition + halfWidth;
+        const prevBeamBack = this.prevBeamPosition - halfWidth;
 
-        const inWidth = Math.abs(localY) <= halfWidth;
+        // Dot is hit if it overlaps with the beam's swept area
+        const sweepStart = Math.min(beamBack, prevBeamBack);
+        const sweepEnd = Math.max(beamFront, prevBeamFront);
 
-        if (!inWidth) continue;
-
-        const sweepStart = this.prevBeamPosition - halfLength;
-        const sweepEnd = this.beamPosition + halfLength;
-
-        const inSweepRange = localX >= sweepStart && localX <= sweepEnd;
-
-        if (inSweepRange) {
+        if (localX >= sweepStart && localX <= sweepEnd) {
           dot.kill();
           this.addKilledDot();
         }

@@ -1,5 +1,6 @@
 import { Pattern } from './Pattern';
 import { PatternType, Difficulty, Bounds, Vector2 } from '../types';
+import { DOT_SPAWN_ANIMATION_DURATION } from '../utils/constants';
 
 export class SweeperLine extends Pattern {
   readonly type = PatternType.SWEEPER_LINE;
@@ -7,16 +8,18 @@ export class SweeperLine extends Pattern {
 
   private readonly duration: number = 20000;
   private readonly dotSpacing: number = 20;
-  private readonly holeSize: number = 40; // Size of each hole in pixels
+  private readonly holeSize: number = 40;
 
   private isHorizontal: boolean = true;
-  private lineVelocity: number = 0;
   private sweepSpeed: number = 150;
-  // For horizontal line: this is the Y position (sweeps up/down), offset is X
-  // For vertical line: this is the X position (sweeps left/right), offset is Y
   private linePos: number = 0;
+  private lineVelocity: number = 0;
   private lineOffset: number = 0;
-  private dotOffsets: number[] = []; // Fixed offsets for each dot along the line
+  private pendingSpawns: { offset: number }[] = [];
+  private spawnTimer: number = 0;
+  private readonly spawnDelay: number = 12;
+  private isSpawning: boolean = false;
+  private spawnCompleteTime: number = 0;
 
   constructor(difficulty: Difficulty = Difficulty.EASY) {
     super();
@@ -35,129 +38,151 @@ export class SweeperLine extends Pattern {
 
   spawn(_center: Vector2, bounds: Bounds): void {
     this.start();
+    this.isSpawning = true;
+    this.spawnCompleteTime = 0;
 
-    // Randomly choose horizontal or vertical orientation
     this.isHorizontal = Math.random() > 0.5;
 
-    // Random offset position for the line (where it sits on the perpendicular axis)
     if (this.isHorizontal) {
-      // Horizontal line at random X position, sweeps up/down
       this.lineOffset = Math.random() * (bounds.width - 200) + 100;
     } else {
-      // Vertical line at random Y position, sweeps left/right
       this.lineOffset = Math.random() * (bounds.height - 200) + 100;
     }
 
-    // Start at one edge and sweep toward the other
     if (this.isHorizontal) {
-      // Start at top or bottom
       this.lineVelocity = Math.random() > 0.5 ? this.sweepSpeed : -this.sweepSpeed;
-      this.linePos = this.lineVelocity > 0 ? -50 : bounds.height + 50;
+
+      this.linePos = this.lineVelocity > 0 ? 0 : bounds.height;
     } else {
-      // Start at left or right
       this.lineVelocity = Math.random() > 0.5 ? this.sweepSpeed : -this.sweepSpeed;
-      this.linePos = this.lineVelocity > 0 ? -50 : bounds.width + 50;
+
+      this.linePos = this.lineVelocity > 0 ? 0 : bounds.width;
     }
 
-    // Generate the line with holes
     this.generateLineWithHoles(bounds);
   }
 
   private generateLineWithHoles(bounds: Bounds): void {
-    const numHoles = Math.floor(Math.random() * 2) + 2; // 2-3 holes
+    const numHoles = Math.floor(Math.random() * 2) + 2;
     const lineLength = this.isHorizontal ? bounds.height : bounds.width;
     const numDots = Math.floor((lineLength - 100) / this.dotSpacing);
 
-    // Generate hole positions (indices where dots should NOT spawn)
     const holeSet = new Set<number>();
     const holeWidthDots = Math.ceil(this.holeSize / this.dotSpacing);
 
     for (let h = 0; h < numHoles; h++) {
-      // Random position along the line, avoiding edges
       const holeCenter = Math.floor(Math.random() * (numDots - 10)) + 5;
       for (let i = -Math.floor(holeWidthDots / 2); i <= Math.floor(holeWidthDots / 2); i++) {
         holeSet.add(holeCenter + i);
       }
     }
 
-    // Spawn dots at fixed offsets along the line
     const startOffset = (lineLength - (numDots * this.dotSpacing)) / 2;
 
     for (let i = 0; i < numDots; i++) {
       if (!holeSet.has(i)) {
         const offset = startOffset + (i * this.dotSpacing);
-        this.dotOffsets.push(offset);
-
-        // Spawn dot - it will be positioned correctly in the first update
-        if (this.isHorizontal) {
-          // Horizontal line: dots vary in X (offset), same Y (sweeps)
-          this.spawnDot(this.lineOffset + offset - (lineLength / 2), this.linePos, { x: 0, y: 0 });
-        } else {
-          // Vertical line: dots vary in Y (offset), same X (sweeps)
-          this.spawnDot(this.linePos, this.lineOffset + offset - (lineLength / 2), { x: 0, y: 0 });
-        }
+        this.pendingSpawns.push({ offset });
       }
     }
   }
 
   update(dt: number, _playerPosition: Vector2, bounds: Bounds): void {
-    // Move the line
-    this.linePos += this.lineVelocity * dt;
 
-    // Reverse direction when we go off-screen (sweep back and forth forever)
-    if (this.isHorizontal) {
-      if (this.lineVelocity > 0 && this.linePos > bounds.height + 50) {
-        this.lineVelocity = -this.sweepSpeed;
-      } else if (this.lineVelocity < 0 && this.linePos < -50) {
-        this.lineVelocity = this.sweepSpeed;
-      }
-    } else {
-      if (this.lineVelocity > 0 && this.linePos > bounds.width + 50) {
-        this.lineVelocity = -this.sweepSpeed;
-      } else if (this.lineVelocity < 0 && this.linePos < -50) {
-        this.lineVelocity = this.sweepSpeed;
+    if (this.isSpawning) {
+      this.spawnCompleteTime += dt * 1000;
+
+      const totalSpawnTime = DOT_SPAWN_ANIMATION_DURATION + (this.pendingSpawns.length * this.spawnDelay);
+      if (this.spawnCompleteTime >= totalSpawnTime) {
+        this.isSpawning = false;
       }
     }
 
-    // Update all dot positions to maintain formation
-    const lineLength = this.isHorizontal ? bounds.height : bounds.width;
-    for (let i = 0; i < this.dots.length; i++) {
+    if (!this.isSpawning) {
+      this.linePos += this.lineVelocity * dt;
+      if (this.isHorizontal) {
+        if (this.linePos >= bounds.height) {
+          this.linePos = bounds.height;
+          this.lineVelocity = -this.sweepSpeed;
+        } else if (this.linePos <= 0) {
+          this.linePos = 0;
+          this.lineVelocity = this.sweepSpeed;
+        }
+      } else {
+        if (this.linePos >= bounds.width) {
+          this.linePos = bounds.width;
+          this.lineVelocity = -this.sweepSpeed;
+        } else if (this.linePos <= 0) {
+          this.linePos = 0;
+          this.lineVelocity = this.sweepSpeed;
+        }
+      }
+    }
+
+    if (this.pendingSpawns.length > 0) {
+      this.spawnTimer += dt * 1000;
+      const lineLength = this.isHorizontal ? bounds.height : bounds.width;
+      while (this.spawnTimer >= this.spawnDelay && this.pendingSpawns.length > 0) {
+        this.spawnTimer -= this.spawnDelay;
+        const { offset } = this.pendingSpawns.shift()!;
+
+        if (this.isHorizontal) {
+          this.spawnDot(
+            this.lineOffset + offset - (lineLength / 2),
+            this.linePos,
+            { x: 0, y: this.lineVelocity }
+          );
+        } else {
+          this.spawnDot(
+            this.linePos,
+            this.lineOffset + offset - (lineLength / 2),
+            { x: this.lineVelocity, y: 0 }
+          );
+        }
+      }
+    }
+
+    const velocityX = this.isHorizontal ? 0 : this.lineVelocity;
+    const velocityY = this.isHorizontal ? this.lineVelocity : 0;
+
+    for (let i = this.dots.length - 1; i >= 0; i--) {
       const dot = this.dots[i];
-      
-      // Skip frozen dots - they should not move
+
       if (dot.isFrozen()) {
         dot.update(dt, bounds, _playerPosition);
         continue;
       }
-      
-      // During spawn animation, keep dot at its initial position
-      if (!dot.isLethal()) {
-        dot.update(dt, bounds, _playerPosition);
-        continue;
-      }
-      
-      const offset = this.dotOffsets[i];
 
-      // Keep dots in formation - position them along the moving line
+
+      if (!this.isSpawning) {
+        dot.position.x += velocityX * dt;
+        dot.position.y += velocityY * dt;
+        dot.velocity.x = velocityX;
+        dot.velocity.y = velocityY;
+        if (this.isHorizontal) {
+          dot.position.y = Math.max(0, Math.min(bounds.height, dot.position.y));
+        } else {
+          dot.position.x = Math.max(0, Math.min(bounds.width, dot.position.x));
+        }
+      }
+
+
       if (this.isHorizontal) {
-        // Horizontal line: X varies by offset, Y is the sweeping position
-        dot.position.x = this.lineOffset + offset - (lineLength / 2);
-        dot.position.y = this.linePos;
+        if (dot.position.x < -50 || dot.position.x > bounds.width + 50) {
+          dot.kill();
+        }
       } else {
-        // Vertical line: Y varies by offset, X is the sweeping position
-        dot.position.x = this.linePos;
-        dot.position.y = this.lineOffset + offset - (lineLength / 2);
+        if (dot.position.y < -50 || dot.position.y > bounds.height + 50) {
+          dot.kill();
+        }
       }
 
-      // Call update for state management (spawn animations, etc)
       dot.update(dt, bounds, _playerPosition);
     }
 
-    // Clean up dead dots
     for (let i = this.dots.length - 1; i >= 0; i--) {
       if (this.dots[i].isDead()) {
         this.dots.splice(i, 1);
-        this.dotOffsets.splice(i, 1);
       }
     }
   }

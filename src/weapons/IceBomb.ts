@@ -25,11 +25,8 @@ export class IceBomb extends Weapon {
     this.explosionCenter = { x: player.position.x, y: player.position.y };
     this.dots = dots;
     
-    // Calculate explosion radius based on bounds
-    this.explosionRadius = 0.3 * (dots.length > 0 ? 800 : 800); // Default to reasonable size
-    
-    // Freeze dots in explosion radius
-    this.freezeDotsInRadius(dots);
+    // Don't freeze dots here - wait for first update() when we have proper bounds
+    this.explosionRadius = 0;
     
     this.state = 'EXPLODING';
   }
@@ -38,6 +35,8 @@ export class IceBomb extends Weapon {
     if (!this.bounds) {
       this.bounds = bounds;
       this.explosionRadius = 0.3 * bounds.width;
+      // Initial freeze now that we have proper bounds - matches the visual
+      this.freezeDotsInRadius(dots);
     }
 
     // Continuously freeze dots that enter the radius while effect is active

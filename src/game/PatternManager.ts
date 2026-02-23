@@ -1,24 +1,15 @@
 import { Pattern } from '../patterns/Pattern';
-import { PatternType, Difficulty, Bounds, Vector2 } from '../types';
+import { PatternType, Bounds, Vector2 } from '../types';
 import { PatternRegistry } from '../patterns/PatternRegistry';
 import { Dot } from '../entities/Dot';
-import { toastManager } from './ToastManager';
-
-const PATTERN_DIFFICULTY_MAP: Map<PatternType, Difficulty> = new Map([
-  [PatternType.ZOMBIE_SNOW, Difficulty.EASY],
-  [PatternType.SPARSE_GRID, Difficulty.EASY],
-  [PatternType.CONTAINMENT_RING, Difficulty.EASY],
-  [PatternType.SWEEPER_LINE, Difficulty.MEDIUM],
-  [PatternType.GATLING_POINT, Difficulty.MEDIUM],
-  [PatternType.BOUNCING_BALL, Difficulty.MEDIUM],
-  [PatternType.BULLET_HELL, Difficulty.HARD],
-  [PatternType.CYCLONE, Difficulty.HARD],
-]);
-
-const SCORE_THRESHOLDS = {
-  EASY_MAX: 500,
-  MEDIUM_MAX: 1500,
-};
+import type { GameEventLogger } from './GameEventLogger';
+// Score-based interval scaling
+// Base interval (ms) at score 0
+const BASE_INTERVAL = 4000;
+// Minimum interval (ms) at high scores
+const MIN_INTERVAL = 1500;
+// Score at which minimum interval is reached
+const MAX_SCORE_SCALING = 5000;
 
 export class PatternManager {
   private activePatterns: Pattern[] = [];
@@ -26,10 +17,7 @@ export class PatternManager {
   private nextPatternInterval: number = 3000;
   private currentScore: number = 0;
   private allDotsCache: Dot[] = [];
-
-  private readonly minInterval: number = 2000;
-  private readonly maxInterval: number = 4000;
-
+  private eventLogger: GameEventLogger | null = null;
   constructor() {
     this.nextPatternInterval = this.getRandomInterval();
   }
@@ -78,6 +66,9 @@ export class PatternManager {
     return this.allDotsCache;
   }
 
+  setEventLogger(logger: GameEventLogger): void {
+    this.eventLogger = logger;
+  }
   isAnyPatternActivelySpawning(): boolean {
     for (let i = 0; i < this.activePatterns.length; i++) {
       if (this.activePatterns[i].isActivelySpawning()) {
@@ -101,26 +92,10 @@ export class PatternManager {
     this.currentScore = score;
   }
 
-  getAvailablePatternTypes(): PatternType[] {
-    const availableTypes: PatternType[] = [];
-    const allTypes = PatternRegistry.getAvailableTypes();
-
-    for (const type of allTypes) {
-      const difficulty = PATTERN_DIFFICULTY_MAP.get(type);
-      if (!difficulty) continue;
-
-      if (this.isDifficultyAvailable(difficulty)) {
-        availableTypes.push(type);
-      }
-    }
-
-    return availableTypes;
-  }
-
   selectNextPattern(): PatternType | null {
-    const availableTypes = this.getAvailablePatternTypes();
+    const allTypes = PatternRegistry.getAvailableTypes();
     
-    const candidateTypes = availableTypes.filter(
+    const candidateTypes = allTypes.filter(
       type => !this.isPatternTypeActive(type)
     );
 
@@ -143,10 +118,12 @@ export class PatternManager {
       return;
     }
 
-    toastManager.show(`Pattern: ${this.formatPatternName(type)}`, 'info');
     pattern.spawn(playerPosition, bounds);
     pattern.start();
     this.activePatterns.push(pattern);
+    if (this.eventLogger) {
+      this.eventLogger.logPatternSpawnStart(type);
+    }
   }
 
   private isPatternTypeActive(type: PatternType): boolean {
@@ -156,26 +133,16 @@ export class PatternManager {
     return false;
   }
 
-  private isDifficultyAvailable(difficulty: Difficulty): boolean {
-    switch (difficulty) {
-      case Difficulty.EASY:
-        return this.currentScore < SCORE_THRESHOLDS.EASY_MAX;
-      case Difficulty.MEDIUM:
-        return this.currentScore >= SCORE_THRESHOLDS.EASY_MAX;
-      case Difficulty.HARD:
-        return this.currentScore >= SCORE_THRESHOLDS.MEDIUM_MAX;
-      default:
-        return false;
-    }
-  }
-
   private removeCompletedPatterns(): void {
     for (let i = this.activePatterns.length - 1; i >= 0; i--) {
       if (this.activePatterns[i].isComplete()) {
         const completedPattern = this.activePatterns[i];
+        if (this.eventLogger) {
+          this.eventLogger.logPatternSpawnComplete(completedPattern.type, completedPattern.getDots().length);
+        }
         completedPattern.clear();
         this.activePatterns.splice(i, 1);
-        toastManager.show(`Pattern ended: ${this.formatPatternName(completedPattern.type)}`, 'info');
+
       }
     }
   }
@@ -198,14 +165,11 @@ export class PatternManager {
   }
 
   private getRandomInterval(): number {
-    return this.minInterval + Math.random() * (this.maxInterval - this.minInterval);
+    // Scale interval based on score - higher score = shorter interval
+    const scoreRatio = Math.min(this.currentScore / MAX_SCORE_SCALING, 1);
+    const interval = BASE_INTERVAL - scoreRatio * (BASE_INTERVAL - MIN_INTERVAL);
+    // Add small random variance (+/- 500ms)
+    return interval + (Math.random() - 0.5) * 1000;
   }
 
-  private formatPatternName(type: PatternType): string {
-    return type
-      .toLowerCase()
-      .split('_')
-      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-      .join(' ');
-  }
 }

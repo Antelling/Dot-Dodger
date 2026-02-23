@@ -129,8 +129,8 @@ export class InputManager {
     
     const gameCoords = this.transformTiltToGameCoords(gammaDelta, betaDelta + 45, orientation);
     
-    const normalizedX = this.clamp(gameCoords.x / 22.5, -1, 1);
-    const normalizedY = this.clamp(gameCoords.y / 22.5, -1, 1);
+    const normalizedX = this.clamp(gameCoords.x / 35, -1, 1);
+    const normalizedY = this.clamp(gameCoords.y / 35, -1, 1);
     
     this.velocity.x = normalizedX * PLAYER_MAX_SPEED;
     this.velocity.y = normalizedY * PLAYER_MAX_SPEED;

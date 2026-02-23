@@ -11,7 +11,7 @@ export abstract class Weapon {
   protected isStarted: boolean = false;
   protected killedDots: number = 0;
 
-  abstract activate(player: Player, dots: Dot[]): void;
+  abstract activate(player: Player, dots: Dot[], initialPosition?: { x: number; y: number }): void;
   abstract update(dt: number, player: Player, dots: Dot[], bounds: Bounds): void;
   abstract render(renderer: Renderer): void;
 

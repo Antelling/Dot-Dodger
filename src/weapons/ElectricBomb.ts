@@ -3,7 +3,7 @@ import type { Player } from '../entities/Player';
 import { Dot } from '../entities/Dot';
 import { WeaponType, Bounds, Vector2 } from '../types';
 import type { Renderer } from '../renderer/Renderer';
-import { toastManager } from '../game/ToastManager';
+
 
 interface ChainNode {
   x: number;
@@ -33,29 +33,31 @@ export class ElectricBomb extends Weapon {
   private chainNodes: ChainNode[] = [];
   private lightningArcs: LightningArc[] = [];
   private dotsToProcess: Dot[] = [];
-  private readonly initialRadiusFactor: number = 0.15;
+  private readonly initialRadiusFactor: number = 0.25;
   private readonly chainRadiusFactor: number = 0.10;
-  private readonly maxChainDepth: number = 50;
-  private orbSpeed: number = 300;
+  private readonly maxChainDepth: number = 1000;
+
   private orbRadius: number = 12;
-  private rollingDuration: number = 2000;
+  private rollingDuration: number = 1500;
   private chainDelayMs: number = 80;
   private lastChainTime: number = 0;
   private bounds: Bounds | null = null;
   private lastCollisionTime: number = 0;
   private readonly collisionCooldown: number = 100;
 
-  activate(player: Player, dots: Dot[]): void {
+  activate(player: Player, dots: Dot[], initialPosition?: { x: number; y: number }): void {
     this.dots = dots;
     this.start();
 
-    this.orbPosition = { ...player.getPosition() };
+    // Use provided position (from WeaponOrb) or fallback to player position
+    if (initialPosition) {
+      this.orbPosition = { x: initialPosition.x, y: initialPosition.y };
+    } else {
+      this.orbPosition = { ...player.getPosition() };
+    }
 
-    const angle = Math.random() * Math.PI * 2;
-    this.orbVelocity = {
-      x: Math.cos(angle) * this.orbSpeed,
-      y: Math.sin(angle) * this.orbSpeed
-    };
+    // Start with zero velocity like NuclearBomb - inherits momentum from nudging
+    this.orbVelocity = { x: 0, y: 0 };
 
     this.state = 'ROLLING';
   }
@@ -169,7 +171,7 @@ export class ElectricBomb extends Weapon {
   private triggerInitialExplosion(): void {
     this.state = 'CHAINING';
     this.lastChainTime = Date.now();
-    toastManager.show('Electric Bomb discharged!', 'warning');
+
 
     const radius = (this.bounds?.width ?? 800) * this.initialRadiusFactor;
     

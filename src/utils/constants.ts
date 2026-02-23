@@ -1,6 +1,6 @@
 export const PLAYER_VISUAL_RADIUS = 10;
 export const PLAYER_HITBOX_RADIUS = PLAYER_VISUAL_RADIUS * 0.5;
-export const PLAYER_MAX_SPEED = 800;
+export const PLAYER_MAX_SPEED = 1200;
 export const PLAYER_ARROW_LENGTH = 15;
 
 export const DOT_RADIUS = 8;
@@ -39,7 +39,10 @@ export const WEAPON_COLORS: Record<string, string> = {
   ELECTRIC_BOMB: '#00FFFF',
   DOT_REPELLENT: '#808080',
   CHAINSAW: '#0066FF',
-  FLAME_BURST: '#FF9900'
+  FLAME_BURST: '#FF9900',
+  TRIPLE_CANNON: '#FF00FF',
+  FIREBALL_ORB: '#FF4500',
+  TESLA_CANNON: '#00CCFF'
 };
 
 export const TARGET_FPS = 60;

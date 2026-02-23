@@ -35,6 +35,12 @@ export class Dot {
     this.patternId = patternId;
   }
 
+  skipSpawnAnimation(): void {
+    this.state = DotState.ACTIVE;
+    this.currentScale = 1;
+    this.spawnElapsed = 1 / SPAWN_INV_DURATION;
+  }
+
   update(dt: number, bounds: Bounds, playerPosition?: Vector2): void {
     if (this.state === DotState.SPAWNING) {
       this.spawnElapsed += dt * 1000;
@@ -90,8 +96,10 @@ export class Dot {
     this.position.x += this.velocity.x * dt;
     this.position.y += this.velocity.y * dt;
     
-    // Don't wrap Cyclone dots - let them fly off-screen
-    if (this.patternId !== PatternType.CYCLONE) {
+    // Don't wrap Cyclone, ClockSweep, or SweeperLine dots - they have their own movement patterns
+    if (this.patternId !== PatternType.CYCLONE && 
+        this.patternId !== PatternType.CLOCK_SWEEP &&
+        this.patternId !== PatternType.SWEEPER_LINE) {
       wrapInPlace(this.position, bounds);
     }
   }

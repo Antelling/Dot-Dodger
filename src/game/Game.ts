@@ -4,7 +4,6 @@ import { InputManager } from './InputManager';
 import { Player } from '../entities/Player';
 import { ScoringSystem } from './ScoringSystem';
 import { CollisionSystem } from './CollisionSystem';
-import { DifficultyManager } from './DifficultyManager';
 import { PatternManager } from './PatternManager';
 import { WeaponOrbSpawner } from './WeaponOrbSpawner';
 import { WeaponRegistry } from '../weapons/WeaponRegistry';
@@ -12,7 +11,8 @@ import type { Weapon } from '../weapons/Weapon';
 import { NuclearBomb } from '../weapons/NuclearBomb';
 import { COLOR_BACKGROUND, FRAME_TIME } from '../utils/constants';
 import { getHighscores, addHighscore } from '../utils/storage';
-import { toastManager } from './ToastManager';
+import { GameEventLogger } from './GameEventLogger';
+
 
 export class Game {
   private renderer: Renderer;
@@ -29,12 +29,11 @@ export class Game {
 
   private scoringSystem: ScoringSystem = new ScoringSystem();
   private collisionSystem: CollisionSystem;
-  private difficultyManager: DifficultyManager = new DifficultyManager();
   private patternManager: PatternManager = new PatternManager();
   private orbSpawner: WeaponOrbSpawner = new WeaponOrbSpawner();
   private activeWeapons: Weapon[] = [];
   private lastDeathEvent: DeathEvent | null = null;
-  
+  private eventLogger: GameEventLogger = new GameEventLogger();
   private menuElement: HTMLElement;
   private gameOverElement: HTMLElement;
   private permissionElement: HTMLElement;
@@ -60,6 +59,9 @@ export class Game {
     this.newHighscoreElement = document.getElementById('new-highscore')!;
     
     this.setupEventListeners();
+    
+    // Setup scale slider
+    this.setupScaleSlider();
     this.checkPlatform();
     this.gameLoop(0);
     this.displayMenuHighscores();
@@ -120,6 +122,38 @@ export class Game {
     });
   }
   
+  private setupScaleSlider(): void {
+    const scaleSlider = document.getElementById('game-scale-slider') as HTMLInputElement;
+    const scaleValue = document.getElementById('scale-value');
+    
+    if (scaleSlider && scaleValue) {
+      // Load saved scale from localStorage or use default
+      const savedScale = localStorage.getItem('game-scale');
+      const initialScale = savedScale ? parseInt(savedScale, 10) : 130;
+      
+      scaleSlider.value = initialScale.toString();
+      scaleValue.textContent = `${initialScale}%`;
+      this.renderer.setScale(initialScale / 100);
+      
+      // Update bounds with the initial scale
+      this.bounds = this.renderer.getBounds();
+      this.collisionSystem.updateBounds(this.bounds);
+      
+      scaleSlider.addEventListener('input', () => {
+        const scale = parseInt(scaleSlider.value, 10);
+        scaleValue.textContent = `${scale}%`;
+        this.renderer.setScale(scale / 100);
+        localStorage.setItem('game-scale', scale.toString());
+        
+        // Update bounds when scale changes
+        this.bounds = this.renderer.getBounds();
+        if (this.collisionSystem) {
+          this.collisionSystem.updateBounds(this.bounds);
+        }
+      });
+    }
+  }
+  
   private async handleNewGameClick(): Promise<void> {
     if (this.input.needsPermissionRequest()) {
       this.menuElement.classList.add('hidden');
@@ -145,6 +179,7 @@ export class Game {
     this.state = GameState.PLAYING;
     this.timeAlive = 0;
     this.lastDeathEvent = null;
+    this.lastFrameTime = performance.now();
 
     this.scoringSystem.start();
 
@@ -157,13 +192,14 @@ export class Game {
     this.patternManager.clear();
     this.orbSpawner.initialize(this.bounds, this.player.getPosition());
     this.activeWeapons = [];
+    this.eventLogger.startGame();
 
     this.input.calibrateTiltBasis();
 
     this.menuElement.classList.add('hidden');
     this.gameOverElement.classList.add('hidden');
     
-    toastManager.clear();
+
   }
   
   private handleGameOver(): void {
@@ -203,14 +239,14 @@ export class Game {
       deathReasonElement.textContent = this.lastDeathEvent?.message ?? 'Unknown';
     }
 
-    const recentToastsList = document.getElementById('recent-toasts');
-    if (recentToastsList) {
-      const allMessages = toastManager.getAllMessages();
-      recentToastsList.innerHTML = allMessages.length > 0
-        ? allMessages.map(msg => `<li class="toast-${msg.type}">${msg.text}</li>`).join('')
-        : '<li class="toast-info">No recent events</li>';
+    // Display event log
+    const eventLogElement = document.getElementById('event-log');
+    if (eventLogElement) {
+      const events = this.eventLogger.getFormattedEvents();
+      eventLogElement.innerHTML = events
+        .map(e => `<li><span class="event-time">[${e.time}]</span> ${e.message}</li>`)
+        .join('');
     }
-
     this.gameOverElement.classList.remove('hidden');
   }
 
@@ -251,7 +287,6 @@ export class Game {
     this.player.update(dt, velocity, this.bounds);
 
     const score = this.scoringSystem.getScore();
-    this.difficultyManager.update(score);
     this.patternManager.setScore(score);
 
     this.patternManager.update(dt, this.player.getPosition(), this.bounds);
@@ -287,18 +322,33 @@ export class Game {
         const weaponType = collidingOrb.getWeaponType();
         const weapon = WeaponRegistry.create(weaponType);
         if (weapon) {
-          weapon.activate(this.player, allDots);
+          weapon.activate(this.player, allDots, collidingOrb.getPosition());
           this.activeWeapons.push(weapon);
           collidingOrb.pickup();
           this.orbSpawner.removeOrb(collidingOrb);
-          toastManager.show(`Picked up ${this.formatWeaponName(weaponType)}`, 'success');
+          this.eventLogger.logWeaponPickup(weaponType);
+
         }
       }
     }
 
     for (let i = this.activeWeapons.length - 1; i >= 0; i--) {
       const weapon = this.activeWeapons[i];
+      
+      // Pass orbs to NuclearBomb before update so it can destroy them in explosion
+      if (weapon instanceof NuclearBomb) {
+        weapon.setOrbs(orbs);
+      }
+      
       weapon.update(dt, this.player, allDots, this.bounds);
+      
+      // Remove any orbs destroyed by NuclearBomb explosion
+      if (weapon instanceof NuclearBomb) {
+        const destroyedOrbs = weapon.getDestroyedOrbs();
+        for (const destroyedOrb of destroyedOrbs) {
+          this.orbSpawner.removeOrb(destroyedOrb);
+        }
+      }
       
       // Check for player collision with active weapon (for bounceable weapons like Electric/Nuclear bomb)
       if (weapon.isActive()) {
@@ -319,6 +369,8 @@ export class Game {
       }
       
       if (weapon instanceof NuclearBomb && weapon.hasKilledPlayer()) {
+        this.eventLogger.logBouncedOrbDetonate('NUCLEAR_BOMB', weapon.getKilledDots());
+        this.eventLogger.logPlayerDeath('Nuclear Bomb explosion');
         this.lastDeathEvent = {
           message: 'Killed by Nuclear Bomb explosion',
           type: 'nuclear_bomb',
@@ -337,6 +389,7 @@ export class Game {
     const collidingDot = this.collisionSystem.checkPlayerDotCollision(this.player);
     if (collidingDot) {
       if (collidingDot.isLethal()) {
+        this.eventLogger.logPlayerDeath('red dot');
         this.lastDeathEvent = {
           message: 'Hit by a red dot',
           type: 'dot',
@@ -383,11 +436,4 @@ export class Game {
     return this.scoringSystem.getScore();
   }
 
-  private formatWeaponName(type: string): string {
-    return type
-      .toLowerCase()
-      .split('_')
-      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-      .join(' ');
-  }
 }

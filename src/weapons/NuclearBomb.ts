@@ -1,9 +1,10 @@
 import { Weapon } from './Weapon';
 import type { Player } from '../entities/Player';
 import { Dot } from '../entities/Dot';
+import { WeaponOrb } from '../entities/WeaponOrb';
 import { WeaponType, Bounds, Vector2 } from '../types';
 import type { Renderer } from '../renderer/Renderer';
-import { toastManager } from '../game/ToastManager';
+
 import { WEAPON_ORB_RADIUS } from '../utils/constants';
 
 export class NuclearBomb extends Weapon {
@@ -12,11 +13,12 @@ export class NuclearBomb extends Weapon {
   private state: 'DRIFTING' | 'EXPLODING' | 'COMPLETE' = 'DRIFTING';
   private orbPosition: Vector2 = { x: 0, y: 0 };
   private orbVelocity: Vector2 = { x: 0, y: 0 };
-  private readonly fuseTime: number = 4000;
-  private collisionCount: number = 0;
+  private readonly fuseTime: number = 1500;
   private explosionRadius: number = 0;
   private explosionStartTime: number = 0;
   private killedDotsInExplosion: Set<Dot> = new Set();
+  private orbsToDestroy: Set<WeaponOrb> = new Set();
+  private orbs: WeaponOrb[] = [];
   private _hasKilledPlayer: boolean = false;
   private bounds: Bounds | null = null;
 
@@ -26,10 +28,28 @@ export class NuclearBomb extends Weapon {
   private readonly collisionCooldown: number = 100;
   private readonly orbRadius: number = WEAPON_ORB_RADIUS;
 
-  activate(player: Player, _dots: Dot[]): void {
+  activate(player: Player, _dots: Dot[], initialPosition?: { x: number; y: number }): void {
     this.dots = _dots;
     this.start();
-    this.orbPosition = { x: player.position.x, y: player.position.y };
+    
+    // Use provided position (from WeaponOrb) or calculate from player
+    if (initialPosition) {
+      this.orbPosition = { x: initialPosition.x, y: initialPosition.y };
+    } else {
+      // Fallback: place outside player based on velocity direction
+      const playerSpeed = Math.sqrt(player.velocity.x ** 2 + player.velocity.y ** 2);
+      if (playerSpeed > 10) {
+        const dirX = player.velocity.x / playerSpeed;
+        const dirY = player.velocity.y / playerSpeed;
+        const offset = player.hitboxRadius + this.orbRadius + 5;
+        this.orbPosition = {
+          x: player.position.x + dirX * offset,
+          y: player.position.y + dirY * offset
+        };
+      } else {
+        this.orbPosition = { x: player.position.x, y: player.position.y - player.hitboxRadius - this.orbRadius - 5 };
+      }
+    }
     this.orbVelocity = { x: 0, y: 0 };
   }
 
@@ -71,7 +91,7 @@ export class NuclearBomb extends Weapon {
       return false;
     }
 
-    const velocityMultiplier = 1.5;
+    const velocityMultiplier = 2.2;
 
     if (directness > 0.7) {
       this.orbVelocity.x = playerVelocity.x * velocityMultiplier;
@@ -114,31 +134,28 @@ export class NuclearBomb extends Weapon {
         const minY = this.orbRadius;
         const maxY = bounds.height - this.orbRadius;
 
+        // Bounce off walls (normal bounce, no speed boost)
         if (this.orbPosition.x <= minX) {
           this.orbVelocity.x = Math.abs(this.orbVelocity.x);
           this.orbPosition.x = minX;
-          this.collisionCount++;
         } else if (this.orbPosition.x >= maxX) {
           this.orbVelocity.x = -Math.abs(this.orbVelocity.x);
           this.orbPosition.x = maxX;
-          this.collisionCount++;
         }
 
         if (this.orbPosition.y <= minY) {
           this.orbVelocity.y = Math.abs(this.orbVelocity.y);
           this.orbPosition.y = minY;
-          this.collisionCount++;
         } else if (this.orbPosition.y >= maxY) {
           this.orbVelocity.y = -Math.abs(this.orbVelocity.y);
           this.orbPosition.y = maxY;
-          this.collisionCount++;
         }
 
-        if (elapsedTime >= this.fuseTime || this.collisionCount >= 3) {
+        if (elapsedTime >= this.fuseTime) {
           this.state = 'EXPLODING';
           this.explosionStartTime = Date.now();
           this.explosionRadius = 0.55 * bounds.width;
-          toastManager.show('Nuclear Bomb detonated!', 'warning');
+
           this.killDotsInExplosion(dots);
           this.checkAndKillPlayer(player);
         }
@@ -170,7 +187,7 @@ export class NuclearBomb extends Weapon {
 
         const ctx = renderer.getContext();
 
-        const warningStartTime = this.fuseTime - 1500;
+        const warningStartTime = this.fuseTime * 0.5; // Warning at half fuse time
         if (elapsedTime >= warningStartTime) {
           const warningElapsed = elapsedTime - warningStartTime;
           const flash1Start = 0;
@@ -320,6 +337,14 @@ export class NuclearBomb extends Weapon {
     }
   }
 
+  setOrbs(orbs: WeaponOrb[]): void {
+    this.orbs = orbs;
+  }
+
+  getDestroyedOrbs(): WeaponOrb[] {
+    return Array.from(this.orbsToDestroy);
+  }
+
   isComplete(): boolean {
     return this.state === 'COMPLETE';
   }
@@ -341,6 +366,20 @@ export class NuclearBomb extends Weapon {
         dot.kill();
         this.addKilledDot();
         this.killedDotsInExplosion.add(dot);
+      }
+    }
+
+    // Destroy weapon orbs in explosion radius
+    for (const orb of this.orbs) {
+      if (this.orbsToDestroy.has(orb) || !orb.isActive()) continue;
+
+      const pos = orb.getPosition();
+      const dx = pos.x - this.orbPosition.x;
+      const dy = pos.y - this.orbPosition.y;
+      const distance = Math.sqrt(dx * dx + dy * dy);
+
+      if (distance <= this.explosionRadius) {
+        this.orbsToDestroy.add(orb);
       }
     }
   }

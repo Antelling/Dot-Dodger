@@ -21,12 +21,16 @@
     .highscore-list li { font-size: 18px; color: #FFF; padding: 5px 0; }
     .highscore-list li:first-child { color: #FFD700; font-size: 22px; }
     .highscore-title { font-size: 24px; color: #FFD700; margin-top: 30px; }
-.recent-toasts-list { list-style: none; padding: 0; margin: 10px 0; text-align: center; max-height: 150px; overflow-y: auto; }
-.recent-toasts-list li { font-size: 16px; padding: 5px 0; border-left: 3px solid; margin: 4px 0; padding-left: 10px; }
-.recent-toasts-list li.toast-success { color: #90EE90; border-color: #00FF00; }
-.recent-toasts-list li.toast-warning { color: #FFE4B5; border-color: #FFD700; }
-.recent-toasts-list li.toast-error { color: #FFB6C1; border-color: #FF4444; }
-.recent-toasts-list li.toast-info { color: #E0E0E0; border-color: #888888; }
+    .event-log-list { list-style: none; padding: 0 10px; margin: 10px 0; text-align: left; max-height: 150px; overflow-y: auto; width: 90%; max-width: 400px; }
+    .event-log-list li { font-size: 14px; color: #CCC; padding: 4px 0; border-bottom: 1px solid #333; }
+    .event-log-list li:first-child { color: #FFF; }
+    .event-time { color: #888; font-family: monospace; margin-right: 8px; }
+
+
+
+
+
+
     .scale-control { display: flex; flex-direction: column; align-items: center; margin: 20px 0; padding: 15px 25px; background: rgba(0, 255, 0, 0.1); border: 1px solid #00FF00; border-radius: 8px; }
     .scale-control label { color: #00FF00; font-size: 16px; margin-bottom: 10px; font-weight: bold; }
     .scale-control input[type="range"] { width: 200px; height: 8px; background: #333; border-radius: 4px; outline: none; -webkit-appearance: none; appearance: none; }
@@ -61,21 +65,21 @@
       <button id="new-game-btn" type="button" class="btn">New Game</button>
       <div class="scale-control">
         <label for="game-scale-slider">Game Scale</label>
-        <input type="range" id="game-scale-slider" min="80" max="150" value="130" step="5">
+        <input type="range" id="game-scale-slider" min="50" max="150" value="130" step="5">
         <span id="scale-value">130%</span>
       </div>
       <h2 class="highscore-title">High Scores</h2>
       <ol id="menu-highscores" class="highscore-list"></ol>
     </div>
     <div id="game-over" class="ui-overlay hidden">
-      <h1 class="menu-title" style="color: #FF0000;">Game Over</h1>
+      <h1 class="menu-title" style="color: #FF0000; text-shadow: none;">Game Over</h1>
       <p id="final-score" class="game-over-score">Score: 0</p>
       <p id="new-highscore" style="color: #FFD700; font-size: 24px; margin-bottom: 20px; display: none;">New High Score!</p>
       <button id="play-again-btn" type="button" class="btn">Play Again</button>
       <h2 class="highscore-title">Cause of Death</h2>
       <p id="death-reason" class="game-over-score" style="color: #FF6666; font-size: 18px; margin-bottom: 10px;">Unknown</p>
-      <h2 class="highscore-title">Recent Events</h2>
-      <ul id="recent-toasts" class="recent-toasts-list"></ul>
+      <h2 class="highscore-title">Event Log</h2>
+      <ul id="event-log" class="event-log-list"></ul>
       <h2 class="highscore-title">High Scores</h2>
       <ol id="gameover-highscores" class="highscore-list"></ol>
     </div>
