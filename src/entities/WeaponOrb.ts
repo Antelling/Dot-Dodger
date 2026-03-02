@@ -13,7 +13,8 @@ export class WeaponOrb {
   private static readonly BOUNCED_WEAPONS: WeaponType[] = [
     WeaponType.NUCLEAR_BOMB,
     WeaponType.ELECTRIC_BOMB,
-    WeaponType.FIREBALL_ORB
+    WeaponType.FIREBALL_ORB,
+    WeaponType.WORMHOLE
   ];
 
   // Bounce physics state for bounced weapons
@@ -95,9 +96,11 @@ export class WeaponOrb {
       case WeaponType.TESLA_CANNON:
         this.drawTeslaCannonIcon(ctx, x, y, iconScale);
         break;
+      case WeaponType.WORMHOLE:
+        this.drawWormholeIcon(ctx, x, y, iconScale);
+        break;
     }
   }
-
   private drawKineticBombIcon(ctx: CanvasRenderingContext2D, x: number, y: number, scale: number): void {
     ctx.beginPath();
     ctx.arc(x, y, scale * 0.3, 0, Math.PI * 2);
@@ -385,6 +388,34 @@ export class WeaponOrb {
     ctx.moveTo(x, y + scale * 0.4);
     ctx.lineTo(x, y + scale * 0.8);
     ctx.stroke();
+  }
+
+  private drawWormholeIcon(ctx: CanvasRenderingContext2D, x: number, y: number, scale: number): void {
+    ctx.strokeStyle = '#FFFFFF';
+    ctx.lineWidth = 2;
+    ctx.lineCap = 'round';
+    
+    // Draw a spiral
+    ctx.beginPath();
+    for (let i = 0; i < 720; i++) {
+      const angle = (i / 180) * Math.PI;
+      const radius = scale * 0.2 + (i / 720) * scale * 0.5;
+      const px = x + Math.cos(angle) * radius;
+      const py = y + Math.sin(angle) * radius;
+      
+      if (i === 0) {
+        ctx.moveTo(px, py);
+      } else {
+        ctx.lineTo(px, py);
+      }
+    }
+    ctx.stroke();
+    
+    // Center dot
+    ctx.fillStyle = '#FFFFFF';
+    ctx.beginPath();
+    ctx.arc(x, y, scale * 0.15, 0, Math.PI * 2);
+    ctx.fill();
   }
 
   isCollidingWith(playerPosition: Vector2, playerRadius: number): boolean {

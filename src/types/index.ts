@@ -31,7 +31,8 @@ export enum PatternType {
   WAVE = 'WAVE',
   CONTAINMENT_RING = 'CONTAINMENT_RING',
   CYCLONE = 'CYCLONE',
-  CLOCK_SWEEP = 'CLOCK_SWEEP'
+  CLOCK_SWEEP = 'CLOCK_SWEEP',
+  MAZE = 'MAZE'
 }
 
 export enum WeaponType {
@@ -46,7 +47,8 @@ export enum WeaponType {
   FLAME_BURST = 'FLAME_BURST',
   TRIPLE_CANNON = 'TRIPLE_CANNON',
   FIREBALL_ORB = 'FIREBALL_ORB',
-  TESLA_CANNON = 'TESLA_CANNON'
+  TESLA_CANNON = 'TESLA_CANNON',
+  WORMHOLE = 'WORMHOLE'
 }
 
 export enum Difficulty {

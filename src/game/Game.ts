@@ -1,4 +1,4 @@
-import { GameState, Bounds, type DeathEvent } from '../types';
+import { GameState, Bounds, type DeathEvent, WeaponType } from '../types';
 import { Renderer } from '../renderer/Renderer';
 import { InputManager } from './InputManager';
 import { Player } from '../entities/Player';
@@ -9,6 +9,7 @@ import { WeaponOrbSpawner } from './WeaponOrbSpawner';
 import { WeaponRegistry } from '../weapons/WeaponRegistry';
 import type { Weapon } from '../weapons/Weapon';
 import { NuclearBomb } from '../weapons/NuclearBomb';
+import { Chainsaw } from '../weapons/Chainsaw';
 import { COLOR_BACKGROUND, FRAME_TIME } from '../utils/constants';
 import { getHighscores, addHighscore } from '../utils/storage';
 import { GameEventLogger } from './GameEventLogger';
@@ -313,13 +314,36 @@ export class Game {
 
     const collidingOrb = this.collisionSystem.checkPlayerOrbCollision(this.player, orbs);
     if (collidingOrb) {
-      // Try to bounce bounced weapons first
+      const weaponType = collidingOrb.getWeaponType();
       const playerVelocity = this.input.getVelocity();
-      const bounced = collidingOrb.bounce(playerVelocity, this.player.getPosition());
-
-      if (!bounced) {
-        // Not a bounced weapon or bounce failed - pick it up
-        const weaponType = collidingOrb.getWeaponType();
+      
+      // Check if this is a bounce weapon
+      const isBounceWeapon = [
+        WeaponType.NUCLEAR_BOMB,
+        WeaponType.ELECTRIC_BOMB,
+        WeaponType.FIREBALL_ORB,
+        WeaponType.WORMHOLE
+      ].includes(weaponType);
+      
+      if (isBounceWeapon) {
+        // For bounce weapons: activate on first collision, then let weapon handle physics
+        const existingWeapon = this.activeWeapons.find(w => w.type === weaponType && w.isActive());
+        if (!existingWeapon) {
+          // Activate the weapon
+          const weapon = WeaponRegistry.create(weaponType);
+          if (weapon) {
+            weapon.activate(this.player, allDots, collidingOrb.getPosition());
+            this.activeWeapons.push(weapon);
+            collidingOrb.pickup();
+            this.orbSpawner.removeOrb(collidingOrb);
+            this.eventLogger.logWeaponPickup(weaponType);
+          }
+        } else {
+          // Weapon already active - just bounce the orb for visual feedback
+          collidingOrb.bounce(playerVelocity, this.player.getPosition());
+        }
+      } else {
+        // Non-bounce weapon: pick up immediately
         const weapon = WeaponRegistry.create(weaponType);
         if (weapon) {
           weapon.activate(this.player, allDots, collidingOrb.getPosition());
@@ -327,7 +351,6 @@ export class Game {
           collidingOrb.pickup();
           this.orbSpawner.removeOrb(collidingOrb);
           this.eventLogger.logWeaponPickup(weaponType);
-
         }
       }
     }
@@ -386,19 +409,24 @@ export class Game {
       }
     }
 
-    const collidingDot = this.collisionSystem.checkPlayerDotCollision(this.player);
-    if (collidingDot) {
-      if (collidingDot.isLethal()) {
-        this.eventLogger.logPlayerDeath('red dot');
-        this.lastDeathEvent = {
-          message: 'Hit by a red dot',
-          type: 'dot',
-          timestamp: Date.now()
-        };
-        this.handleGameOver();
-      } else if (collidingDot.isFrozen()) {
-        collidingDot.kill();
-        this.scoringSystem.addKills(1);
+    // Check if player is invincible (has active chainsaw)
+    const isInvincible = this.activeWeapons.some(w => w instanceof Chainsaw && !w.isComplete());
+    
+    if (!isInvincible) {
+      const collidingDot = this.collisionSystem.checkPlayerDotCollision(this.player);
+      if (collidingDot) {
+        if (collidingDot.isLethal()) {
+          this.eventLogger.logPlayerDeath('red dot');
+          this.lastDeathEvent = {
+            message: 'Hit by a red dot',
+            type: 'dot',
+            timestamp: Date.now()
+          };
+          this.handleGameOver();
+        } else if (collidingDot.isFrozen()) {
+          collidingDot.kill();
+          this.scoringSystem.addKills(1);
+        }
       }
     }
   }

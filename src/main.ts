@@ -18,6 +18,7 @@ import { WavePattern } from './patterns/WavePattern';
 import { ContainmentRing } from './patterns/ContainmentRing';
 import { Cyclone } from './patterns/Cyclone';
 import { ClockSweep } from './patterns/ClockSweep';
+// import { Maze } from './patterns/Maze';
 
 import { Blaster } from './weapons/Blaster';
 import { Chainsaw } from './weapons/Chainsaw';
@@ -31,6 +32,7 @@ import { NuclearBomb } from './weapons/NuclearBomb';
 import { TripleCannon } from './weapons/TripleCannon';
 import { FireballOrb } from './weapons/FireballOrb';
 import { TeslaCannon } from './weapons/TeslaCannon';
+import { Wormhole } from './weapons/Wormhole';
 
 PatternRegistry.register(PatternType.ZOMBIE_SNOW, ZombieSnow);
 PatternRegistry.register(PatternType.SWEEPER_LINE, SweeperLine);
@@ -45,6 +47,7 @@ PatternRegistry.register(PatternType.WAVE, WavePattern);
 PatternRegistry.register(PatternType.CONTAINMENT_RING, ContainmentRing);
 PatternRegistry.register(PatternType.CYCLONE, Cyclone);
 PatternRegistry.register(PatternType.CLOCK_SWEEP, ClockSweep);
+// PatternRegistry.register(PatternType.MAZE, Maze);
 
 WeaponRegistry.register(WeaponType.BLASTER, Blaster);
 WeaponRegistry.register(WeaponType.CHAINSAW, Chainsaw);
@@ -58,6 +61,7 @@ WeaponRegistry.register(WeaponType.NUCLEAR_BOMB, NuclearBomb);
 WeaponRegistry.register(WeaponType.TRIPLE_CANNON, TripleCannon);
 WeaponRegistry.register(WeaponType.FIREBALL_ORB, FireballOrb);
 WeaponRegistry.register(WeaponType.TESLA_CANNON, TeslaCannon);
+WeaponRegistry.register(WeaponType.WORMHOLE, Wormhole);
 
 
 

@@ -42,7 +42,8 @@ export const WEAPON_COLORS: Record<string, string> = {
   FLAME_BURST: '#FF9900',
   TRIPLE_CANNON: '#FF00FF',
   FIREBALL_ORB: '#FF4500',
-  TESLA_CANNON: '#00CCFF'
+  TESLA_CANNON: '#00CCFF',
+  WORMHOLE: '#8B00FF'
 };
 
 export const TARGET_FPS = 60;

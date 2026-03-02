@@ -4,7 +4,7 @@ import { WEAPON_ORB_RADIUS } from '../utils/constants';
 
 export class WeaponOrbSpawner {
   private orbs: WeaponOrb[] = [];
-  private readonly orbCount: number = 3;
+  private readonly orbCount: number = 4;
   private readonly minSpacing: number = 100;
   private readonly playerAvoidRadius: number = 150;
 
@@ -80,7 +80,8 @@ export class WeaponOrbSpawner {
       WeaponType.FLAME_BURST,
       WeaponType.TRIPLE_CANNON,
       WeaponType.FIREBALL_ORB,
-      WeaponType.TESLA_CANNON
+      WeaponType.TESLA_CANNON,
+      WeaponType.WORMHOLE
     ];
     return types[Math.floor(Math.random() * types.length)];
   }

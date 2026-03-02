@@ -58,7 +58,6 @@ export class NuclearBomb extends Weapon {
     if (now - this.lastCollisionTime < this.collisionCooldown) {
       return false;
     }
-    this.lastCollisionTime = now;
 
     const dx = this.orbPosition.x - player.position.x;
     const dy = this.orbPosition.y - player.position.y;
@@ -72,6 +71,7 @@ export class NuclearBomb extends Weapon {
     }
 
     if (distance === 0) {
+      this.lastCollisionTime = now;
       this.orbVelocity.x = playerVelocity.x;
       this.orbVelocity.y = playerVelocity.y;
       return true;
@@ -90,6 +90,9 @@ export class NuclearBomb extends Weapon {
     if (directness < 0.1) {
       return false;
     }
+
+    // Only set cooldown after all checks pass
+    this.lastCollisionTime = now;
 
     const velocityMultiplier = 2.2;
 

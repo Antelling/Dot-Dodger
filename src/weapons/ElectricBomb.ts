@@ -94,7 +94,6 @@ export class ElectricBomb extends Weapon {
     if (now - this.lastCollisionTime < this.collisionCooldown) {
       return false;
     }
-    this.lastCollisionTime = now;
 
     const dx = this.orbPosition.x - _player.position.x;
     const dy = this.orbPosition.y - _player.position.y;
@@ -108,6 +107,7 @@ export class ElectricBomb extends Weapon {
     }
 
     if (distance === 0) {
+      this.lastCollisionTime = now;
       this.orbVelocity.x = playerVelocity.x;
       this.orbVelocity.y = playerVelocity.y;
       return true;
@@ -126,6 +126,9 @@ export class ElectricBomb extends Weapon {
     if (directness < 0.1) {
       return false;
     }
+
+    // Only set cooldown after all checks pass
+    this.lastCollisionTime = now;
 
     const velocityMultiplier = 1.5;
 
@@ -304,13 +307,6 @@ export class ElectricBomb extends Weapon {
       const opacity = Math.max(0, 1 - age / fadeTime);
 
       if (opacity > 0) {
-        renderer.drawCircle(
-          node.x,
-          node.y,
-          node.radius,
-          `rgba(0, 255, 255, ${opacity * 0.3})`
-        );
-
         renderer.drawCircleOutline(
           node.x,
           node.y,

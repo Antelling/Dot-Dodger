@@ -28,7 +28,7 @@ export class TripleCannon extends Weapon {
   // Bullet settings
   private readonly BULLET_RADIUS = 8;
   private readonly BULLET_SPEED = 800;
-  private readonly EXPLOSION_RADIUS = 60;
+  private readonly EXPLOSION_RADIUS = 78;
   private readonly EXPLOSION_DURATION = 300;
 
   activate(player: Player, dots: Dot[]): void {
@@ -66,7 +66,7 @@ export class TripleCannon extends Weapon {
       this.playerAngle = player.directionAngle;
 
       // Fire next bullet after delay
-      if (this.currentBulletIndex < 3 && now - this.lastShotTime >= this.shotDelay) {
+      if (this.currentBulletIndex < 5 && now - this.lastShotTime >= this.shotDelay) {
         this.fireBullet();
       }
       // Update all bullets
@@ -101,7 +101,7 @@ export class TripleCannon extends Weapon {
         }
       }
       // Complete when all bullets are done and we've fired all 3
-      if (allDone && this.currentBulletIndex >= 3) {
+      if (allDone && this.currentBulletIndex >= 5) {
         this.state = 'COMPLETE';
       }
     }

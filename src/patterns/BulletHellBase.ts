@@ -18,20 +18,16 @@ export abstract class BulletHellBase extends Pattern {
   protected originY: number = 0;
   protected spawnAccumulator: number = 0;
   protected patternPhase: number = 0;
-  protected isShooting: boolean = false;
   
   private masterDot: Dot | null = null;
   private masterDead: boolean = false;
-  private masterSpawnDuration: number = 1500;
-  private masterSpawnElapsed: number = 0;
+  private readonly spawnDelay: number = 1000;
 
   protected abstract spawnPatternBullets(): void;
 
   spawn(_center: Vector2, bounds: Bounds): void {
-    this.start();
     this.spawnAccumulator = 0;
     this.patternPhase = 0;
-    this.masterSpawnElapsed = 0;
     this.masterDead = false;
 
     const location = SPAWN_LOCATIONS[Math.floor(Math.random() * SPAWN_LOCATIONS.length)];
@@ -40,6 +36,7 @@ export abstract class BulletHellBase extends Pattern {
     this.originY = pos.y;
 
     this.masterDot = new Dot(this.originX, this.originY, this.type);
+    this.masterDot.skipSpawnAnimation();
     Object.defineProperty(this.masterDot, 'radius', {
       value: this.masterRadius,
       writable: false,
@@ -78,26 +75,27 @@ export abstract class BulletHellBase extends Pattern {
       if (this.masterDot.isDead()) {
         this.masterDead = true;
       } else if (!this.masterDot.isFrozen()) {
-        this.updateMasterSpawnAnimation(dt);
-        
-        if (this.isShooting && this.elapsedMs <= this.duration + this.masterSpawnDuration) {
-          this.spawnAccumulator += dt * 1000;
-          
-          while (this.spawnAccumulator >= this.spawnInterval) {
-            this.spawnAccumulator -= this.spawnInterval;
-            this.spawnPatternBullets();
-          }
-        }
-
-        this.patternPhase += dt * 0.5;
+        this.masterDot.update(dt, bounds, playerPosition);
       }
+    }
+
+    const canSpawn = !this.masterDead && this.elapsedMs >= this.spawnDelay && this.elapsedMs <= this.spawnDelay + this.duration;
+    const masterFrozen = this.masterDot && this.masterDot.isFrozen();
+    
+    if (canSpawn && !masterFrozen) {
+      this.spawnAccumulator += dt * 1000;
+      
+      while (this.spawnAccumulator >= this.spawnInterval) {
+        this.spawnAccumulator -= this.spawnInterval;
+        this.spawnPatternBullets();
+      }
+      this.patternPhase += dt * 0.5;
     }
 
     for (let i = this.dots.length - 1; i >= 0; i--) {
       const dot = this.dots[i];
       
       if (dot === this.masterDot) {
-        dot.update(dt, bounds, playerPosition);
         continue;
       }
       
@@ -116,18 +114,6 @@ export abstract class BulletHellBase extends Pattern {
 
       dot.position.x += dot.velocity.x * dt;
       dot.position.y += dot.velocity.y * dt;
-    }
-  }
-
-  private updateMasterSpawnAnimation(dt: number): void {
-    if (this.masterDot && this.masterDot.state === DotState.SPAWNING) {
-      this.masterSpawnElapsed += dt * 1000;
-      this.masterDot.update(dt, { width: 0, height: 0 });
-      
-      if (this.masterSpawnElapsed >= this.masterSpawnDuration) {
-        this.masterDot.state = DotState.ACTIVE;
-        this.isShooting = true;
-      }
     }
   }
 
@@ -179,7 +165,7 @@ export abstract class BulletHellBase extends Pattern {
     if (this.masterDead || (this.masterDot && this.masterDot.isFrozen())) {
       return false;
     }
-    return this.isShooting;
+    return this.elapsedMs >= this.spawnDelay && this.elapsedMs <= this.spawnDelay + this.duration;
   }
 
   getSpawnPointDot(): Dot | null {
